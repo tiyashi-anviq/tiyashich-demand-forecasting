@@ -49,11 +49,11 @@ export function Evidence({ month, family, now }: { month: string; family: string
   const chart = useMemo(() => {
     if (!d) return null
     const s = d.series
-    const x: string[] = [...s.months, s.first.month, ...s.ahead.map((a: any) => a.month)]
+    const x: string[] = [...s.months, ...s.ahead.map((a: any) => a.month)]
     const lyOf = (m: string) => { const j = s.months.indexOf(`${+m.slice(0, 4) - 1}${m.slice(4)}`); return j >= 0 ? s.actual[j] : null }
     const at = (m: string) => x.indexOf(m)
     const mk = (f: (i: number) => number | null) => x.map((_, i) => f(i))
-    const model = mk((i) => (i === s.months.length - 1 ? s.actual[s.months.length - 1] : i >= s.months.length ? [s.first, ...s.ahead][i - s.months.length].model : null))
+    const model = mk((i) => (i === s.months.length - 1 ? s.actual[s.months.length - 1] : i >= s.months.length ? s.ahead[i - s.months.length].model : null))
     const series: Series[] = [
       { name: 'Orders received (actual)', values: mk((i) => (i < s.months.length ? s.actual[i] : null)), tone: 1 },
       { name: 'Model', values: model, tone: 2 },
@@ -144,7 +144,7 @@ export function Evidence({ month, family, now }: { month: string; family: string
       <DataCard id="chk" title="Checks on the number" description="What to ask before agreeing it. A failed check is a reason to ask, not a block" cols={chkCols} rows={list} itemsLabel="Checks per page" rowKey={(r) => r.name} />
 
       {chart ? (
-        <ChartCard title={`${family}: orders, the model and the number on the table`} subtitle={`The last ${s.months.length} months of orders received, the model for ${monthLong(s.first.month)} to ${monthLong(s.ahead[s.ahead.length - 1].month)}, and the number now on the table for ${monthLong(month)}.`}
+        <ChartCard title={`${family}: orders, the model and the number on the table`} subtitle={`The last ${s.months.length} months of orders received, the model for ${monthLong(s.ahead[0].month)} to ${monthLong(s.ahead[s.ahead.length - 1].month)}, and the number now on the table for ${monthLong(month)}.`}
           label={`${family} orders, model and the number on the table`}
           headers={['Month', ...chart.series.map((x) => x.name)]}
           rows={chart.x.map((m, i) => [monthLong(m), ...chart.series.map((x) => (x.values[i] === null ? '' : fmtInt(Math.round(x.values[i] as number))))])}

@@ -414,8 +414,11 @@ def vintages(f: dict) -> dict:
             inv_f = float(np.nansum(t_["invoiced_in_file"]))
             bias = float((np.nansum(t_["consensus"]) - inv_f) / inv_f) if inv_f else 0.0
             av = out_h[f"M{h}"].get("ahead")
-            jit = (int(hashlib.md5(f"team|M{h}|{r['fmonths'][0]}".encode()).hexdigest()[:6], 16) / 0xFFFFFF - 0.5) * 0.06
-            st["ahead"][f"M{h}"] = [None if not av or av[0] is None else float(av[0] * (1 + bias + jit)), None, None]
+            k = h - 1  # the one open month this run is about: M1 is October, M2 November, M3 December
+            jit = (int(hashlib.md5(f"team|M{h}|{r['fmonths'][k]}".encode()).hexdigest()[:6], 16) / 0xFFFFFF - 0.5) * 0.06
+            row = [None, None, None]
+            row[k] = None if not av or av[k] is None else float(av[k] * (1 + bias + jit))
+            st["ahead"][f"M{h}"] = row
     fm_ = r["fmonths"]
     ens_ = r["fut"]["ens"][:, idx].sum(axis=1)
     latest = dict(months=list(fm_[:3]), forecast=[float(ens_[i]) for i in range(3)], p50=[float(ens_[i] * np.exp(mm[i])) for i in range(3)], runs=["M1", "M2", "M3"], data_to=months[-1])

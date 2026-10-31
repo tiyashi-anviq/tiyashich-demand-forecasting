@@ -17,7 +17,7 @@ from ..eda import panel as P
 from . import build as B
 
 _LOCK = threading.RLock()
-VERSION = "7"  # change when the build changes so saved results are rebuilt
+VERSION = "8"  # change when the build changes so saved results are rebuilt
 CACHE = store.ROOT / "forecast"
 
 

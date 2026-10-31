@@ -84,9 +84,9 @@ export default function Inventory({ embedded = false }: { embedded?: boolean }) 
           {(d) => {
             const depCols: Col<any>[] = [
               { header: 'Depot', cell: (r) => `${r.depot} · ${r.name}`, sort: (r) => r.depot },
-              { header: 'Short', num: true, cell: (r) => String(r.short), sort: (r) => r.short },
-              { header: 'Over-stocked', num: true, cell: (r) => String(r.over), sort: (r) => r.over },
-              { header: 'In range', num: true, cell: (r) => String(r.ok), sort: (r) => r.ok },
+              { header: 'Short (products)', num: true, cell: (r) => String(r.short), sort: (r) => r.short },
+              { header: 'Over-stocked (products)', num: true, cell: (r) => String(r.over), sort: (r) => r.over },
+              { header: 'In range (products)', num: true, cell: (r) => String(r.ok), sort: (r) => r.ok },
             ]
             const rowCols: Col<any>[] = [
               { header: 'Product', cell: (r) => r.name, sort: (r) => String(r.name).toLowerCase() },
@@ -128,7 +128,7 @@ export default function Inventory({ embedded = false }: { embedded?: boolean }) 
                   { label: 'Transfers suggested', value: d.moves.length.toLocaleString('en-IN'), sublabel: `${fmtN(d.moved)} units moved between depots` },
                   { label: 'Left for supplier orders', value: d.orders.length.toLocaleString('en-IN'), sublabel: 'Short, with no spare stock elsewhere' },
                 ]} />
-                <DataCard id="ivd" title="Depots" description="How many products at each depot are short or over-stocked" cols={depCols} rows={d.depots} itemsLabel="depots" rowKey={(r) => r.depot} defaultSort={{ col: 1, dir: 'desc' }} />
+                <DataCard id="ivd" title="Depots" description="For each depot, the number of its products with too little stock, too much stock, or about the right amount. Each product is judged by how many days of sales its stock covers, against the limits for its family (see Norms)" cols={depCols} rows={d.depots} itemsLabel="depots" rowKey={(r) => r.depot} defaultSort={{ col: 1, dir: 'desc' }} />
                 <div className="row-03">
                   <Dropdown id="iv-s" size="md" titleText="Show" label="Show" items={STATUS} itemToString={(i: string | null) => i ?? ''} selectedItem={st} onChange={({ selectedItem }: any) => selectedItem && setSt(selectedItem)} />
                 </div>
@@ -138,7 +138,7 @@ export default function Inventory({ embedded = false }: { embedded?: boolean }) 
                   note="A transfer takes only stock above the family's target maximum and fills only up to its target minimum. The usual transit time is the median of past transfers on the same route." />
                 <ProductionEffect sim={d.sim} />
                 <DataCard id="ivo" title="Left for supplier orders" description="Shortfall that no depot has spare stock to cover" cols={orCols} rows={d.orders} itemsLabel="shortfalls" rowKey={(r) => `${r.sku}|${r.depot}`} defaultSort={{ col: 3, dir: 'desc' }} />
-                <DataCard id="ivn" title="Norms" description="The cover targets and flag limits used above" cols={nmCols} rows={d.norms} itemsLabel="families" rowKey={(r) => r.family} />
+                <DataCard id="ivn" title="Norms" description="The cover targets and flag limits used above" cols={nmCols} rows={fam === ALL ? d.norms : d.norms.filter((n: any) => n.family === fam)} itemsLabel="families" rowKey={(r) => r.family} />
               </>
             )
           }}

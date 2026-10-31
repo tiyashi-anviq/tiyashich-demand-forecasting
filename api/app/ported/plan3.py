@@ -44,6 +44,18 @@ def plan() -> dict:
     sku_u = pd.DataFrame(r["sku_fut"][:, :M + 1], index=r["skus"]["sku"].to_numpy()).groupby(level=0).sum()
     skus = list(sku_u.index)
     fam = t["sm"]["family"].reindex(skus)
+    # a family whose number was agreed in the forecast challenge plans on that number, not the model's, for the month it covers
+    agreed_f: dict[str, float] = {}
+    try:
+        from ..challenge import core as CH
+        for row in CH.cycle()["items"]:
+            if row["month"] == fm[0] and row["agreed"] is not None and row["model"] > 0:
+                agreed_f[row["family"]] = float(row["agreed"]) / float(row["model"])
+    except Exception:
+        agreed_f = {}
+    if agreed_f:
+        sc = fam.map(lambda f_: agreed_f.get(f_, 1.0)).to_numpy()
+        sku_u[0] = sku_u[0].to_numpy() * sc
     nm = t["norms"]
     tgt = fam.map(lambda f: float((nm.loc[f, "Target_Stock_Cover_Days_Min"] + nm.loc[f, "Target_Stock_Cover_Days_Max"]) / 2) if f in nm.index else 42.5)
     short_l = fam.map(lambda f: float(nm.loc[f, "Short_Flag_Below_Cover_Days"]) if f in nm.index else 35.0)
@@ -78,7 +90,11 @@ def plan() -> dict:
     out = dict(demand=np.zeros(M), prod_req=np.zeros(M), prod_ok=np.zeros(M), buy_fg=np.zeros(M), close=np.zeros(M), unmet=np.zeros(M))
     s = stock.copy()
     prod_sku = {}
-    fam_flow, prod_rows = {}, {k: dict(sku=k, name=str(t['sm'].loc[k].get('description', k)), family=str(fam.get(k)), line=str(line_of.get(k, 'Bought in')), prod=[0.0] * M, demand=[0.0] * M, close=[0.0] * M) for k in skus}
+    # each product's share of orders by region (last 13 weeks), so the plan can be read for one region
+    _x = pan[pan["sku"].isin(skus)].groupby(["sku", "region"])["orders_qty"].sum().unstack(fill_value=0.0)
+    _x = _x.div(_x.sum(axis=1).replace(0, np.nan), axis=0).fillna(0.0)
+    sku_reg = {k: {rg: float(v) for rg, v in row.items()} for k, row in _x.iterrows()}
+    fam_flow, prod_rows = {}, {k: dict(sku=k, name=str(t['sm'].loc[k].get('description', k)), family=str(fam.get(k)), line=str(line_of.get(k, 'Bought in')), sub=str(t['sm'].loc[k].get('Sub_Category', '') or ''), reg=sku_reg.get(k, {}), lo=float(short_l[k]), hi=float(over_l[k]), prod=[0.0] * M, demand=[0.0] * M, close=[0.0] * M, need=[0.0] * M, nxt=[0.0] * M) for k in skus}
     fam_rows, line_rows = [], {ln: dict(line=ln, rated=float(rated.get(ln, 0.0)), cap=cap_fc.get(ln, 0.0), ref=float(ref_req.get(ln, 0.0)), required=[0.0] * M, possible=[0.0] * M, util=[0.0] * M, short=[0.0] * M, backlog=[0.0] * M, fresh=[0.0] * M, carry_in=[0.0] * M) for ln in set(line_of.values)}
     for j in range(M):
         dem = sku_u[j]
@@ -120,6 +136,7 @@ def plan() -> dict:
         prod_sku[j] = sup[isown]
         for k in skus:
             prod_rows[k]["prod"][j], prod_rows[k]["demand"][j], prod_rows[k]["close"][j] = float(sup[k]), float(dem[k]), float(end[k])
+            prod_rows[k]["need"][j], prod_rows[k]["nxt"][j] = float(req[k]), float(nxt[k])
         for fn, g in pd.DataFrame(dict(fam=fam, dem=dem, req=req, sup=sup, end=end)).groupby("fam"):
             for key, col in (("demand", "dem"), ("need", "req"), ("possible", "sup"), ("close", "end")):
                 fam_flow.setdefault(fn, {}).setdefault(key, [0.0] * M)[j] = float(g[col].sum())
@@ -151,7 +168,7 @@ def plan() -> dict:
                              cover_start=cover_start, lead=lead, at_risk=risk))
             tot_buy += buy * price
             stock_rm = end
-    return dict(months=fm, days=days, stock_week=str(wk.date()), flow=dict({k: [float(x) for x in v] for k, v in out.items()}), lines=list(line_rows.values()), plants=list(plant_rows.values()), plant_names=PL.PLANTS, fam_flow=fam_flow, products=list(prod_rows.values()), stock_rolled_days=gap, materials=rmat, families=fam_rows,
+    return dict(agreed_families=sorted(agreed_f), months=fm, days=days, stock_week=str(wk.date()), flow=dict({k: [float(x) for x in v] for k, v in out.items()}), lines=list(line_rows.values()), plants=list(plant_rows.values()), plant_names=PL.PLANTS, fam_flow=fam_flow, products=list(prod_rows.values()), stock_rolled_days=gap, materials=rmat, families=fam_rows,
                 totals=dict(demand=float(out["demand"].sum()), prod=float(out["prod_ok"].sum()), short=float(sum(l["backlog"][-1] for l in line_rows.values())), unmet=float(out["unmet"].sum()),
                             plants_full=sum(1 for r in plant_rows.values() for u in r["util"] if u >= 0.999),
                             rm_buy=tot_buy, lines_over=sum(1 for l in line_rows.values() if max(l["util"]) >= 0.999), rm_risk=len({x["rm"] for x in rmat if x["at_risk"]})))

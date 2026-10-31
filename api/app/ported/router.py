@@ -138,6 +138,6 @@ def sup_rm_try(sku: str, month: str, qty: float):
 inv_router = APIRouter(prefix="/api/inventory", tags=["inventory"])
 
 @inv_router.get("/view")
-def inv_view(depot: str | None = Query(None), family: str | None = Query(None), status: str | None = Query(None)):
+def inv_view(depot: str | None = Query(None), family: str | None = Query(None), status: str | None = Query(None), product: str | None = Query(None)):
     _ready()
-    return supply._clean(inventory.view(depot, family, status))
+    return supply._clean(inventory.view(depot, family, status, product))

@@ -48,7 +48,7 @@ function MonthFacts({ month }: { month: string }) {
   return <DataCard id="facts" title="What was going on around the month" description="Festivals, trade schemes and events logged, for the selected month and the two months it is compared with" cols={cols} rows={rows} itemsLabel="Months per page" rowKey={(r) => r.month} />
 }
 
-/** The sales team's simulated numbers for the months still open (October at each lead), when its file is on the app's scale. */
+/** The sales team's simulated numbers for the months still open (the month each run is about: October for M1, November for M2, December for M3), when its file is on the app's scale. */
 function teamAhead(d: any, run: string): (number | null)[] | null {
   return d.team?.ahead?.[run] ?? null
 }
@@ -113,7 +113,7 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
         return (
           <>
             {!only && (
-            <ContentSwitcher size="sm" selectedIndex={RUNS.indexOf(run)} onChange={({ index = 0 }) => setRun(RUNS[index])}>
+            <ContentSwitcher size="sm" selectedIndex={RUNS.indexOf(run)} onChange={({ index = 0 }) => { setRun(RUNS[index]); setVm(null) }}>
                 {RUNS.map((r) => <Switch key={r} name={r} text={`${r}: made ${r.slice(1)} month${r === 'M1' ? '' : 's'} ahead`} />)}
               </ContentSwitcher>
             )}
@@ -127,10 +127,6 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
               { label: 'Months scored', value: ms.length, sublabel: `${monthLong(ms[0])} to ${monthLong(ms[ms.length - 1])}` },
             ]} />
             <Findings items={d.notes} title="Read this first" />
-            <DataCard id="horizons" title="Accuracy as the forecast gets closer, M3 to M1" info={G.accuracy + ' ' + G.bias}
-              description={`Same ${ms.length} test months at each distance. Under-forecast is lost sales; over-forecast is overstock. They are shown apart and never netted.`}
-              cols={horizonCols} rows={horizonRows} itemsLabel="Rows per page" rowKey={(r) => r.name}
-              note={`Industry is about 80% at M3 rising to 90% at M1. Eveready's own M3 is about ${fmtPct(REF.eveready, 0)} today. Accuracy is 100% minus WAPE on the monthly national total.`} />
 
             {(() => {
               const K = +run.slice(1)
@@ -155,7 +151,9 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
                 { header: 'P50 (units)', num: true, cell: (r) => fmtN(r.p50), sort: (r) => r.p50 },
               ]
               const hidden = { [`Sales team ${run}`]: !!tm, ...hid }
-              const sel = vm && xs.includes(vm) ? vm : ms[ms.length - 1]
+              const mine = ahead[Math.min(+run.slice(1) - 1, ahead.length - 1)]  // the one open month this run is about: M1 October, M2 November, M3 December
+              const choices = [...ms, mine]
+              const sel = vm && choices.includes(vm) ? vm : mine
               const si = xs.indexOf(sel)
               const open = si >= ms.length
               const fcast: number | null = open ? (hz.ahead?.[si - ms.length] ?? null) : hz.forecast[si]
@@ -231,7 +229,7 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
               return (
                 <>
                   <div className="challenge-bar">
-                    <Dropdown id="vm" size="md" titleText="Target month" label="Target month" items={xs} itemToString={(m: string | null) => (m ? `${monthLong(m)}${xs.indexOf(m) >= ms.length ? ' (open)' : ''}` : '')}
+                    <Dropdown id="vm" size="md" titleText="Target month" label="Target month" items={choices} itemToString={(m: string | null) => (m ? `${monthLong(m)}${xs.indexOf(m) >= ms.length ? ' (open)' : ''}` : '')}
                       selectedItem={sel} onChange={({ selectedItem }) => selectedItem && setVm(selectedItem)} />
                   </div>
                   <StatRow items={[
@@ -241,15 +239,15 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
                     ...(tm && !open ? [{ label: `Sales team ${run} (units)`, value: fmtN(tm[si]), sublabel: <>Against actual <Delta value={actual ? tm[si] / actual - 1 : null} text={fmtSigned(actual ? tm[si] / actual - 1 : null, 1)} /></> }] : []),
                     ...(open && ta?.[si - ms.length] != null ? [{ label: `Sales team ${run} (units)`, value: fmtN(ta[si - ms.length] as number), sublabel: <>Simulated. Against the model <Delta value={fcast ? (ta[si - ms.length] as number) / fcast - 1 : null} text={fmtSigned(fcast ? (ta[si - ms.length] as number) / fcast - 1 : null, 1)} /></> }] : []),
                   ]} />
-                  <DataCard id="latest" info={G.p50} title={`Latest run, with data to ${monthLong(L.data_to)}`}
-                    description="The forecast made now for the months still to come. Each month sits at a different distance, so October is M1, November M2 and December M3."
-                    cols={latestCols} rows={latestRows} itemsLabel="Rows per page" rowKey={(r) => r.month}
-                    note="Units of orders received for the month. P50 is the forecast moved by its median past miss. Est." />
                   <ChartCard title={`${run} forecast runs by month`}
                     subtitle={`Each month's ${run} forecast was made with data up to the end of the month ${K} month${K === 1 ? '' : 's'} before it, so it only knew what was known then. Click a point, or pick a target month, to compare it. The dashed line carries on past the last actual month for the months where this run has already been made.`}
                     label={`${run} forecast against orders received, with its P50`} headers={rt.headers} rows={rt.rows}
                     chart={<RunLines key={run} x={xs} series={runSeries} hidden={hidden} onToggle={(n) => setHid({ ...hidden, [n]: !hidden[n] })} selected={sel} onSelect={setVm} yTitle="Orders received (units)" label={`${run} forecast against orders received, with its P50`} />}
                     note={`P50 is this run's forecast moved by its median miss (${fmtSigned(hz.p50[0] / hz.forecast[0] - 1, 1)}), so half of the months landed above it and half below. It comes from the same months it is drawn against, so it describes this period rather than predicting the next. Est.${ta?.some((x) => x != null) ? ' The sales team numbers for October are simulated from their usual over- or under-forecast at this lead, because their file ends in September.' : ''}`} />
+                  <DataCard id="latest" info={G.p50} title={`Latest run, with data to ${monthLong(L.data_to)}`}
+                    description={`The forecast made now for the one month that sits at ${run} distance: ${monthLong(latestRows.find((r) => r.run === run)?.month ?? ahead[0])}.`}
+                    cols={latestCols} rows={latestRows.filter((r) => r.run === run)} itemsLabel="Rows per page" rowKey={(r) => r.month}
+                    note="Units of orders received for the month. P50 is the forecast moved by its median past miss. Est." />
                   <ContentSwitcher size="sm" selectedIndex={basis === 'mom' ? 0 : 1} onChange={({ index = 0 }) => setBasis(index === 0 ? 'mom' : 'yoy')}>
                     <Switch name="mom" text="Compare with last month" /><Switch name="yoy" text="Compare with the same month last year" />
                   </ContentSwitcher>
@@ -296,6 +294,10 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
                     subtitle={`Their invoiced actuals are ${fmtPct(d.team.scale_ratio, 1)} of the invoiced units in the app for the same months, so the file was not lifted with the sales history. A comparison would make the sales team look worse than they were, so it is not drawn. Bring the forecast-versions file to the same scale and it will appear here.`} />}
               </Tile>
             )}
+            <DataCard id="horizons" title="Accuracy as the forecast gets closer, M3 to M1" info={G.accuracy + ' ' + G.bias}
+              description={`Same ${ms.length} test months at each distance. Under-forecast is lost sales; over-forecast is overstock. They are shown apart and never netted.`}
+              cols={horizonCols} rows={horizonRows} itemsLabel="Rows per page" rowKey={(r) => r.name}
+              note={`Industry is about 80% at M3 rising to 90% at M1. Eveready's own M3 is about ${fmtPct(REF.eveready, 0)} today. Accuracy is 100% minus WAPE on the monthly national total.`} />
           </>
         )
       }}

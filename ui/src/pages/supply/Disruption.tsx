@@ -15,20 +15,6 @@ const EST = <Tag type="cool-gray" size="sm" title="Computed from the inputs abov
 const inr = (n: number | null | undefined) => (n === null || n === undefined ? '–' : `₹${fmtN(n)}`)
 const AUTO = 'Auto'
 const AUTO_R = 'All regions'
-const ISSUES = [
-  { n: 1, issue: 'Sales projection arrives on the 29th to 31st, but planning needs it by the 20th or 22nd', how: 'The forecast is refreshed in the tool ahead of the cut-off, so sales confirm or adjust it instead of building it. The timeline below shows the dates.', status: 'Partly' },
-  { n: 3, issue: 'Production plan should reach SAP to raise raw-material orders automatically', how: 'The plan and the raw-material need are generated from the forecast through the bill of materials. The link into SAP is not built.', status: 'Partly' },
-  { n: 4, issue: 'Forward production plan is hampered when a kit or raw material is unavailable', how: 'The scenario above: a vendor fails, a fallback steps in, and the screen shows lost output, idle days and how long running harder takes to win it back.', status: 'Addressed' },
-  { n: 6, issue: 'Production is finalised by the 24th for the next month, with room to move it up or down', how: 'The freeze date is on the timeline and the plan is built per line. The up or down margin is not modelled yet.', status: 'Partly' },
-  { n: 13, issue: 'No production schedule or future supply quantity in SAP', how: 'The monthly plan per line and the supply quantity needed are shown. A day-by-day schedule is not built.', status: 'Partly' },
-]
-const SC: Record<string, 'green' | 'warm-gray' | 'red'> = { Addressed: 'green', Partly: 'warm-gray', 'Not built': 'red' }
-const icols: Col<any>[] = [
-  { header: 'No.', num: true, cell: (r) => String(r.n), sort: (r) => r.n },
-  { header: 'Issue the client listed', cell: (r) => r.issue },
-  { header: 'What this screen does', cell: (r) => r.how },
-  { header: 'Status', cell: (r) => <Tag type={SC[r.status]} size="md">{r.status}</Tag>, sort: (r) => r.status },
-]
 const day = (n: number | null | undefined) => (n === null || n === undefined ? 'Not reached' : `Day ${Math.round(n)}`)
 
 /** A vendor stops delivering a raw material, a fallback vendor steps in, and what that does to production, OTIF and the plan. */
@@ -162,9 +148,7 @@ export default function Disruption() {
               ) : null}
               <DataCard id="dsl" title="Production plan and winning back the time" info={G.utilisation + ' Winning back time = the share of the plan lost, divided by the extra share a month the higher utilisation adds.'} description="A product stops when its scarcest material runs out. The extra output is what the line gains by running at the higher utilisation." cols={lcols(d)} rows={d.lines} itemsLabel="lines" rowKey={(r) => r.line}
                 defaultSort={{ col: 3, dir: 'desc' }}
-                note={<>Lines here are line types for the whole company, with all plants added together; the plant-by-plant view is on the Next 3 months tab. Recovery is the lost share of the plan divided by the extra share the higher utilisation adds each month. It needs headroom: the line cannot run above 100%. Last month the data shows these lines at {d.lines.map((l: any) => `${(l.util_now * 100).toFixed(0)}%`).filter((x: string, i: number, a: string[]) => a.indexOf(x) === i).join(', ')}. {EST}</>} />
-              <DataCard id="dsi" title="Issues from the client's list" info="The issues the client listed as the ones to solve, and how much of each this screen covers." cols={icols} rows={ISSUES} itemsLabel="issues" rowKey={(r) => String(r.n)}
-                note="Anything marked Partly or Not built needs data or a system link that the demo does not have, such as SAP or the transport system." />
+                note={<>Lines here are line types for the whole company, with all plants added together; the plant-by-plant view is in the Plant filter above. Recovery is the lost share of the plan divided by the extra share the higher utilisation adds each month. It needs headroom: the line cannot run above 100%. Last month the data shows these lines at {d.lines.map((l: any) => `${(l.util_now * 100).toFixed(0)}%`).filter((x: string, i: number, a: string[]) => a.indexOf(x) === i).join(', ')}. {EST}</>} />
               <DataCard id="dst" title="Timeline" info="The planning dates the client wants: demand confirmed by the 20th (the 22nd at the latest), the production plan frozen on the 24th with room to move up or down, and purchase requests following from it. The failure and fallback dates are the scenario above." description="The planning dates for the month, and when the failure, the fallback and the recovery fall against them" cols={tl} rows={d.timeline} itemsLabel="steps" rowKey={(r) => r.when + r.event} />
             </>
           )

@@ -41,8 +41,23 @@ export default function Plan3() {
           const mi = 0
           const shown: [string, number][] = [[m[0], 0]]
           const mo0 = monthLong(m[0])
-          const dem0 = d.flow.demand[0]
-          const made0 = d.flow.prod_ok[0]
+          // the filters at the top narrow the product-based views; a region's part of a product is its share of that product's recent orders
+          const filtered = F('gf') !== ALL || F('gc') !== ALL || F('gr') !== ALL
+          const scoped: any[] = (d.products as any[]).filter((r) => (F('gf') === ALL || r.family === F('gf')) && (F('gc') === ALL || r.sub === F('gc'))).map((r) => {
+            const k = F('gr') === ALL ? 1 : (r.reg?.[F('gr')] ?? 0)
+            return k === 1 ? r : { ...r, prod: r.prod.map((x: number) => x * k), demand: r.demand.map((x: number) => x * k), close: r.close.map((x: number) => x * k), need: r.need.map((x: number) => x * k), nxt: r.nxt.map((x: number) => x * k) }
+          })
+          const famAgg: Record<string, any> = {}
+          scoped.forEach((r) => {
+            const a = (famAgg[r.family] ??= { family: r.family, month: m[0], demand: 0, need: 0, possible: 0, closing: 0, nxt: 0, lo: r.lo, hi: r.hi })
+            a.demand += r.demand[0]; a.need += r.need[0]; a.possible += r.prod[0]; a.closing += r.close[0]; a.nxt += r.nxt[0]
+          })
+          const famRows = Object.values(famAgg).sort((x: any, y: any) => x.family.localeCompare(y.family)).map((a: any) => {
+            const cover = a.nxt > 0 ? a.closing / a.nxt : null
+            return { ...a, cover, status: cover === null ? null : cover < a.lo ? 'Short' : cover > a.hi ? 'Over-stocked' : 'Within norm' }
+          })
+          const dem0 = filtered ? famRows.reduce((a: number, r: any) => a + r.demand, 0) : d.flow.demand[0]
+          const made0 = filtered ? famRows.reduce((a: number, r: any) => a + r.possible, 0) : d.flow.prod_ok[0]
           const unmet0 = (d.lines as any[]).reduce((a, l) => a + l.backlog[0], 0)
           const buy0 = (d.materials as any[]).filter((r) => r.month === m[0]).reduce((a, r) => a + r.buy_value, 0)
           const risk0 = new Set((d.materials as any[]).filter((r) => r.month === m[0] && r.at_risk).map((r) => r.rm)).size
@@ -55,11 +70,11 @@ export default function Plan3() {
           notes.push(risk0 > 0
             ? { tone: 'watch', text: `${risk0} raw material${risk0 > 1 ? 's start' : ' starts'} ${mo0} with less stock than the vendor's lead time. Place those orders at the start of the month, ahead of the plan freeze.` }
             : { tone: 'good', text: `Raw-material stock covers the vendors' lead times for ${mo0}.` })
-          const bad = d.families.filter((f: any) => f.month === m[0] && f.status && f.status !== 'Within norm').length
+          const bad = famRows.filter((f: any) => f.status && f.status !== 'Within norm').length
           notes.push(bad ? { tone: 'watch', text: `${bad} product families end ${mo0} outside the stock norm (short or over-stocked). See the inventory check.` } : { tone: 'good', text: `Finished-goods stock stays within the norm for every family at the end of ${mo0}.` })
 
           // 2. inventory check
-          const famF = (d.families as any[]).filter((r) => (sel === ALL || r.month === sel) && (F('ff') === ALL || r.family === F('ff')) && (F('fs') === ALL || r.status === F('fs')))
+          const famF = famRows.filter((r: any) => (F('fs') === ALL || r.status === F('fs')))
           const fcols: Col<any>[] = [
             { header: 'Product family', cell: (r) => r.family, sort: (r) => r.family },
             { header: 'Month', cell: (r) => monthLong(r.month), sort: (r) => r.month },
@@ -69,7 +84,7 @@ export default function Plan3() {
             { header: 'Against the norm', cell: (r) => (r.status ? <Tag type={ST[r.status]} size="md">{r.status}</Tag> : '–'), sort: (r) => r.status },
           ]
           // 3. production plan by product
-          const prodF = (d.products as any[]).filter((r) => (F('pf') === ALL || r.family === F('pf')) && (F('pl') === ALL || r.line === F('pl')))
+          const prodF = scoped.filter((r) => F('pl') === ALL || r.line === F('pl'))
           const sumA = (a: number[]) => a.reduce((x, y) => x + y, 0)
           const pcols: Col<any>[] = [
             { header: 'Product', cell: (r) => `${r.name} (${r.sku})`, sort: (r) => String(r.name).toLowerCase() },
@@ -115,7 +130,8 @@ export default function Plan3() {
           ]
           const names = ['Demand', 'Needed', 'Possible', 'Closing stock']
           const keys = ['demand', 'need', 'possible', 'close']
-          const famList = Object.keys(d.fam_flow).sort()
+          const famList = famRows.map((r: any) => r.family)
+          const fv = (f: string, k: string) => (famRows.find((r: any) => r.family === f) as any)[{ demand: 'demand', need: 'need', possible: 'possible', close: 'closing' }[k] as string]
           return (
             <>
               <StatRow items={[
@@ -126,20 +142,22 @@ export default function Plan3() {
               ]} />
               <Findings title="What the plan shows" items={notes} />
               <div className="row-03 filter-row">
+                <Pick id="p3-gf" title="Product family" items={uniq(d.products.map((r: any) => r.family))} value={F('gf')} onChange={setF('gf')} />
+                <Pick id="p3-gc" title="Category" items={uniq(d.products.map((r: any) => r.sub).filter(Boolean))} value={F('gc')} onChange={setF('gc')} />
+                <Pick id="p3-gr" title="Region" items={uniq(d.products.flatMap((r: any) => Object.keys(r.reg ?? {})))} value={F('gr')} onChange={setF('gr')} />
                 <Pick id="p3-plant" title="Plant (manufacturing)" items={pnames} value={plant} onChange={(v) => setPlant(v ?? ALL)} allLabel="All plants" />
               </div>
+              {filtered ? <p className="footnote">Family, category and region narrow the demand, inventory and product views. A region's part of a product is its share of that product's recent orders. The manufacturing, plant and raw-material sections stay network-wide, because plants and lines serve every region.</p> : null}
               <ChartCard title="Demand forecast and stock by family" info={`For ${mo0}: the demand forecast, what must be made or bought to meet it and to rebuild stock, what the plants can make, and the stock left at month end, by product family.`} subtitle={`Stock counted at ${d.stock_week} and rolled to 1 ${mo0} using recent sales`}
-                chart={<TrendChart kind="labels" zero x={famList} series={keys.map((k, i) => ({ name: names[i], values: famList.map((f) => d.fam_flow[f][k][0]) }))} yTitle="Units" label={`Demand, production and stock in ${mo0}, by family`} />}
-                headers={['Family', ...names]} rows={famList.map((f) => [f, ...keys.map((k) => fmtN(d.fam_flow[f][k][0]))])} label={`Demand, production and stock in ${mo0}, by family`}
+                chart={<TrendChart kind="labels" zero x={famList} series={keys.map((k, i) => ({ name: names[i], values: famList.map((f) => fv(f, k)) }))} yTitle="Units" label={`Demand, production and stock in ${mo0}, by family`} />}
+                headers={['Family', ...names]} rows={famList.map((f) => [f, ...keys.map((k) => fmtN(fv(f, k)))])} label={`Demand, production and stock in ${mo0}, by family`}
                 note={<>Needed = demand + a third of the gap to the target stock cover − stock at the start; the stock gap is closed over three months, not in one. {EST}</>} />
               <div className="row-03 filter-row">
-                <Pick id="p3-ff" title="Product family" items={uniq(d.families.map((r: any) => r.family))} value={F('ff')} onChange={setF('ff')} />
                 <Pick id="p3-fs" title="Against the norm" items={['Short', 'Within norm', 'Over-stocked']} value={F('fs')} onChange={setF('fs')} />
               </div>
               <DataCard id="p3s" title="Inventory check: finished-goods stock by family" info="Closing stock and days of cover against the family's stock norm: short below the lower flag, over-stocked above the upper flag." description="Stock after production, by family and month" cols={fcols} rows={famF} itemsLabel="rows" rowKey={(r) => r.family + r.month} defaultSort={{ col: 4, dir: 'asc' }}
                 note={<>Norms come from the inventory norms table. {EST}</>} />
               <div className="row-03 filter-row">
-                <Pick id="p3-pf" title="Product family" items={uniq(d.products.map((r: any) => r.family))} value={F('pf')} onChange={setF('pf')} />
                 <Pick id="p3-pl" title="Made on" items={uniq(d.products.map((r: any) => r.line))} value={F('pl')} onChange={setF('pl')} />
               </div>
               <DataCard id="p3p" title="Production plan by product" info="What each product must be made, or bought if it has no bill of materials, in each month, against its demand." description="Units to make or buy by product and month" cols={pcols} rows={prodF} itemsLabel="products" rowKey={(r) => r.sku} defaultSort={{ col: 3, dir: 'desc' }}

@@ -191,6 +191,12 @@ def month_facts(m: str) -> dict:
         if fe is not None:
             f = fe[(pd.to_datetime(fe["date"]) >= start) & (pd.to_datetime(fe["date"]) <= end)].sort_values("date")
             out["festivals"] = [dict(name=str(r.name), date=pd.Timestamp(r.date).date().isoformat()) for r in f.itertuples()]
+            # the calendar ends before some coming months; festivals that fall on the same date every year (Christmas, Republic Day) still happen then
+            if "Moves_Each_Year" in fe.columns and start > pd.to_datetime(fe["date"]).max():
+                fx = fe[fe["Moves_Each_Year"].astype(str).str.upper() == "N"].copy()
+                fx["d"] = pd.to_datetime(fx["date"])
+                fx = fx[fx["d"].dt.month == start.month].sort_values("d").drop_duplicates("name", keep="last")
+                out["festivals"] += [dict(name=str(r.name), date=pd.Timestamp(year=start.year, month=r.d.month, day=r.d.day).date().isoformat()) for r in fx.itertuples()]
         sc = t["schemes"]
         if sc is not None:
             s = sc[(pd.to_datetime(sc["start_date"]) <= end) & (pd.to_datetime(sc["end_date"]) >= start)]

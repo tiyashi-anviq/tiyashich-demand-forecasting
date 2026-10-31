@@ -196,8 +196,13 @@ def run(ws: dict, panel: pd.DataFrame, progress=lambda f, msg: None) -> dict:
 
     # ---- long-range run from the last origin
     fut = {c: pred[c][last_o] * cal["n_weeks"].to_numpy()[M: M + C.H_MAX][:, None] for c in C.COMPS}
-    wl = weights[3]
-    fut["ens"] = sum(wl[c] * fut[c] for c in C.COMPS)
+    # each month ahead is blended with the weights for its own distance, so October is the M1 forecast everywhere,
+    # November the M2 and December the M3; anything further out keeps the M3 weights
+    ens_f = np.zeros_like(fut[C.COMPS[0]])
+    for k in range(ens_f.shape[0]):
+        wk_ = weights[min(k + 1, 3)]
+        ens_f[k] = sum(wk_[c] * fut[c][k] for c in C.COMPS)
+    fut["ens"] = ens_f
 
     # ---- SKU shares: last 8 weeks of orders inside each family x region x channel bucket, as of each origin month
     sk = p.groupby(["family", "region", "channel", "sku", "date"])["orders_qty"].sum().reset_index()

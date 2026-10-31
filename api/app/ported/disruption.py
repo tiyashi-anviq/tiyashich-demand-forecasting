@@ -73,7 +73,7 @@ def options(product: str | None = None) -> dict:
         vend.append(dict(id=v, name=t["names"].get(v, v), materials=[t["rmm"].loc[k, "Raw_Material"] if "Raw_Material" in t["rmm"].columns else k for k in g["sku"]], otif=None if v not in p12 else float(p12[v]) / 100.0,
                          roles=sorted(set(g["Role"]))))
     regs = [] if r is None else sorted(r["sidx"]["region"].unique())
-    return dict(plants=PL.PLANTS, regions=regs, products=products, vendors=sorted(vend, key=lambda x: x["id"]), months=[] if r is None else list(r["fmonths"][:3]), names=t["names"])
+    return dict(plants=PL.PLANTS, regions=regs, products=products, vendors=sorted(vend, key=lambda x: x["id"]), months=[] if r is None else list(r["fmonths"][:1]), names=t["names"])
 
 
 def scenario(vendor: str, month: str | None, weeks: float = 4.0, shortfall: float = 1.0, fallback: str | None = None, b_cap: float = 0.6,

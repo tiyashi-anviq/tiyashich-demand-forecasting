@@ -17,12 +17,14 @@ import { NeedsData } from '../ui/NeedsData'
 import { ViewShell } from '../ui/ViewShell'
 
 const ALL = 'All'
+const SPLITS = ['Category', 'Depot', 'Partner'] as const
 const WINDOWS = [{ id: '13', label: '13 weeks' }, { id: '26', label: '26 weeks' }, { id: 'all', label: 'All' }]
 const sum = (a: (number | null)[]) => a.reduce<number>((s, v) => s + (v ?? 0), 0)
 
 export default function QuickCommerce() {
   const build = useBuild('eda')
   const [depot, setDepot] = useState(ALL), [cat, setCat] = useState(ALL), [partner, setPartner] = useState(ALL)
+  const [by, setBy] = useState<(typeof SPLITS)[number]>('Category')
   const [win, setWin] = useState('26'), [buf, setBuf] = useState('2')
   const opts = useQuery({ queryKey: ['qc', 'options'], queryFn: () => getJson<any>('/api/quick-commerce/options'), enabled: build.data?.state === 'ready', staleTime: Infinity })
   const qs = new URLSearchParams()
@@ -109,9 +111,11 @@ export default function QuickCommerce() {
                     headers={t2.headers} rows={t2.rows}
                     note="The service table covers every channel, so these rates are for the product families selected, not for quick commerce alone. Fulfilment counts units; OTIF counts whole order lines, which is why it is lower." />
                 ) : null}
-                <DataCard id="qcc" title="By category" description="Over all weeks since the first order: request, real need and stock built up at partners" cols={mk('Category')} rows={d.by_category} itemsLabel="categories" rowKey={(r) => r.name} defaultSort={{ col: 3, dir: 'desc' }} />
-                <DataCard id="qcd" title="By depot" description="Over all weeks since the first order: where partners over-order most" cols={mk('Depot')} rows={d.by_depot} itemsLabel="depots" rowKey={(r) => r.name} defaultSort={{ col: 3, dir: 'desc' }} />
-                <DataCard id="qcp" title="By partner" description="Over all weeks since the first order" cols={mk('Partner')} rows={d.by_partner} itemsLabel="partners" rowKey={(r) => r.name} defaultSort={{ col: 3, dir: 'desc' }} />
+                <ContentSwitcher size="sm" selectedIndex={SPLITS.indexOf(by)} onChange={({ index = 0 }) => setBy(SPLITS[index])}>
+                  {SPLITS.map((x) => <Switch key={x} name={x} text={`By ${x.toLowerCase()}`} />)}
+                </ContentSwitcher>
+                <DataCard id="qcs" title={`Requested against real need, by ${by.toLowerCase()}`} description="Over all weeks since the first order: what partners requested, what they really needed and the stock built up at partners"
+                  cols={mk(by)} rows={by === 'Category' ? d.by_category : by === 'Depot' ? d.by_depot : d.by_partner} itemsLabel="rows" rowKey={(r) => r.name} defaultSort={{ col: 3, dir: 'desc' }} defaultOpen />
               </>
             )
           }}

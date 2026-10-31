@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiErrorNotification, ModulePageHeader, PageSection, PendingLabel, useToast } from '@reiq/ui'
 import { Button, ContentSwitcher, Dropdown, InlineNotification, NumberInput, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag, TextInput, Tile } from '@reiq/ui/carbon'
@@ -11,7 +11,6 @@ import { DataCard, type Col } from '../ui/DataCard'
 import { Delta, StatRow } from '../ui/StatRow'
 import { NeedsData } from '../ui/NeedsData'
 import { Evidence } from './challenge/Evidence'
-import { Checks } from './challenge/Checks'
 
 const ROLES = [{ id: 'regional', label: 'Regional Head' }, { id: 'sd', label: 'S&D Head' }, { id: 'bu', label: 'BU Heads' }] as const
 type Role = (typeof ROLES)[number]['id']
@@ -161,41 +160,10 @@ function ActivityCard({ stamp, month, family, title }: { stamp: number; month?: 
   return <DataCard id={`act${family ? 'f' : ''}`} title={title} description={rows.length ? 'Newest first, with the reason given each time' : 'Nothing has been submitted or discussed yet'} cols={cols} rows={rows} itemsLabel="Entries per page" rowKey={(r, i) => `${r.at}|${i}`} defaultSort={{ col: 0, dir: 'desc' }} />
 }
 
-/** The month from each business unit's side: how many families, where each conversation stands, and the number. */
-function UnitsView({ items, units, onOpen }: { items: any[]; units: any[]; onOpen: (bu: string) => void }) {
-  const rows = units.map((u) => {
-    const bs = items.map((i) => i.bus.find((b: any) => b.bu === u.bu)).filter(Boolean)
-    const cur = bs.reduce((a: number, b: any) => a + (b.agreed ?? b.proposal ?? 0), 0)
-    const model = bs.reduce((a: number, b: any) => a + b.model, 0)
-    const ly = bs.reduce((a: number, b: any) => a + (b.last_year ?? 0), 0)
-    const started = bs.filter((b: any) => b.status !== 'waiting')
-    return { ...u, families: bs.length, agreed: bs.filter((b: any) => b.status === 'agreed').length, with_bu: bs.filter((b: any) => b.status === 'negotiating' && b.turn === 'bu').length,
-      with_sd: bs.filter((b: any) => b.status === 'negotiating' && b.turn === 'sd').length, waiting: bs.length - started.length, model, ly, cur: started.length ? cur : null,
-      rounds: bs.reduce((a: number, b: any) => a + b.rounds.length, 0) }
-  })
-  const cols: Col<any>[] = [
-    { header: 'Business unit', cell: (r) => r.name, sort: (r) => String(r.name).toLowerCase() },
-    { header: 'Head', cell: (r) => r.head },
-    { header: 'Channels', cell: (r) => r.channels.join(', ') },
-    { header: 'Families', num: true, cell: (r) => r.families, sort: (r) => r.families },
-    { header: 'Agreed', num: true, cell: (r) => r.agreed, sort: (r) => r.agreed },
-    { header: 'With the BU Head', num: true, cell: (r) => r.with_bu, sort: (r) => r.with_bu },
-    { header: 'With the S&D Head', num: true, cell: (r) => r.with_sd, sort: (r) => r.with_sd },
-    { header: 'Not started', num: true, cell: (r) => r.waiting, sort: (r) => r.waiting },
-    { header: 'Rounds so far', num: true, cell: (r) => r.rounds, sort: (r) => r.rounds },
-    { header: 'Model (units)', num: true, cell: (r) => fmtN(r.model), sort: (r) => r.model },
-    { header: 'Same month last year (units)', num: true, cell: (r) => fmtN(r.ly), sort: (r) => r.ly },
-    { header: 'Current number (units)', num: true, cell: (r) => (r.cur === null ? '–' : fmtN(r.cur)), sort: (r) => r.cur },
-    { header: 'Against the model (%)', num: true, cell: (r) => { const g = r.cur === null ? null : gap(r.cur, r.model); return <Delta value={g} text={fmtSigned(g, 1)} /> } },
-  ]
-  return <DataCard id="units" title="By business unit" description="Where the conversation with each unit stands this month. Select a row to see that unit's families" cols={cols} rows={rows} itemsLabel="Units per page" rowKey={(r) => r.bu} onRow={(r) => onOpen(r.bu)} />
-}
-
-/** One family and month: the regional numbers, the S&D Head's consolidation, then one conversation per business unit. */
-const SECTIONS = [{ id: 'evidence', label: 'Evidence' }, { id: 'regions', label: 'Regions' }, { id: 'units', label: 'Business units' }, { id: 'activity', label: 'Activity' }] as const
+const SECTIONS = [{ id: 'regions', label: 'Regional numbers' }, { id: 'units', label: 'Business units' }, { id: 'evidence', label: 'Evidence' }] as const
 type Section = (typeof SECTIONS)[number]['id']
 
-function FamilyPanel({ it, role, buPick, onPick, onDone, section, onSection, stamp }: { it: any; role: Role; buPick: string | null; onPick: (bu: string) => void; onDone: (c: any) => void; section: Section; onSection: (s: Section) => void; stamp: number }) {
+function FamilyPanel({ it, role, buPick, onPick, onDone, section, onSection, regionFilter }: { it: any; role: Role; buPick: string | null; onPick: (bu: string) => void; onDone: (c: any) => void; section: Section; onSection: (s: Section) => void; regionFilter: string | null }) {
   const { showToast } = useToast()
   const [qty, setQty] = useState<number | undefined>(undefined)
   const send = useMutation({
@@ -236,7 +204,7 @@ function FamilyPanel({ it, role, buPick, onPick, onDone, section, onSection, sta
       {section === 'evidence' && <Evidence month={it.month} family={it.family} now={now} />}
       {section === 'regions' && (
         <>
-      <DataCard id="reg" title="Regional numbers" description="What each Regional Head submitted" cols={regCols} rows={it.regional} itemsLabel="Regions per page" rowKey={(r) => r.region} />
+      <DataCard id="reg" title="Regional numbers" description="What each Regional Head submitted" cols={regCols} rows={regionFilter ? it.regional.filter((x: any) => x.region === regionFilter) : it.regional} itemsLabel="Regions per page" rowKey={(r) => r.region} />
         </>
       )}
       {section === 'units' && (
@@ -260,7 +228,6 @@ function FamilyPanel({ it, role, buPick, onPick, onDone, section, onSection, sta
       )}
         </>
       )}
-      {section === 'activity' && <ActivityCard stamp={stamp} month={it.month} family={it.family} title={`${it.family}: what has happened`} />}
       {send.isError ? <ApiErrorNotification error={send.error} fallbackTitle="Could not send this number" /> : null}
     </Tile>
   )
@@ -273,15 +240,15 @@ export default function Challenge() {
   const role = (ROLES.find((r) => r.id === params.get('role'))?.id ?? 'sd') as Role
   const set = (patch: Record<string, string | null>) => setParams((cur) => { const n = new URLSearchParams(cur); Object.entries(patch).forEach(([k, v]) => (v === null ? n.delete(k) : n.set(k, v))); return n }, { replace: true })
   const d = q.data
-  const month = d?.months.find((m: any) => m.m === params.get('month'))?.m ?? d?.months[0]?.m
-  const region = d?.regions.includes(params.get('region')) ? params.get('region') : d?.regions[0]
+  const month = d?.months[0]?.m  // the challenge is about the first month after the last actuals, October
+  const region = d?.regions.includes(params.get('region')) ? params.get('region') : d?.regions[0]  // the Regional Head's own region
+  const regPick: string | null = d?.regions.includes(params.get('region')) ? params.get('region') : null  // S&D and BU heads: one region, or all
+  const sdUnit = d?.units.find((u: any) => u.bu === params.get('bu')) ?? null
   const unit = d?.units.find((u: any) => u.bu === params.get('bu')) ?? d?.units[0]
   const onDone = (c: any) => qc.setQueryData(['challenge'], c)
   const items: any[] = d ? d.items.filter((i: any) => i.month === month) : []
   const family = items.find((i) => i.family === params.get('family')) ?? items[0]
-  const PAGES = [{ id: 'families', label: 'Families' }, { id: 'checks', label: 'Checks' }, { id: 'units', label: 'By business unit' }, { id: 'activity', label: 'All activity' }] as const
-  const page = PAGES.find((p) => p.id === params.get('page'))?.id ?? 'families'
-  const section = (SECTIONS.find((x) => x.id === params.get('section'))?.id ?? 'evidence') as Section
+  const section = (SECTIONS.find((x) => x.id === params.get('section'))?.id ?? (role === 'bu' ? 'units' : 'regions')) as Section
 
   const toolbar = d ? (
     <div className="challenge-bar" role="group" aria-label="Who you are and which month">
@@ -291,14 +258,17 @@ export default function Challenge() {
           {ROLES.map((r) => <Switch key={r.id} name={r.id} text={r.label} />)}
         </ContentSwitcher>
       </div>
-      <div>
-        <span className="cds--label">Month</span>
-        <ContentSwitcher size="md" selectedIndex={d.months.findIndex((m: any) => m.m === month)} onChange={({ index = 0 }) => set({ month: d.months[index].m })}>
-          {d.months.map((m: any) => <Switch key={m.m} name={m.m} text={`${m.label}, M${m.lead}`} />)}
-        </ContentSwitcher>
-      </div>
       {role === 'regional' && (
         <Dropdown id="reg" size="md" titleText="Region" label="Region" items={d.regions} itemToString={(i: string | null) => i ?? ''} selectedItem={region} onChange={({ selectedItem }) => selectedItem && set({ region: selectedItem })} />
+      )}
+      {role === 'sd' && (
+        <>
+          <Dropdown id="reg-f" size="md" titleText="Region" label="Region" items={['All regions', ...d.regions]} itemToString={(i: string | null) => i ?? ''} selectedItem={regPick ?? 'All regions'} onChange={({ selectedItem }) => set({ region: selectedItem === 'All regions' ? null : selectedItem })} />
+          <Dropdown id="bu-f" size="md" titleText="Business unit" label="Business unit" items={[{ bu: '', name: 'All business units' }, ...d.units]} itemToString={(i: any) => i?.name ?? ''} selectedItem={sdUnit ?? { bu: '', name: 'All business units' }} onChange={({ selectedItem }) => set({ bu: selectedItem?.bu || null })} />
+        </>
+      )}
+      {role === 'bu' && (
+        <Dropdown id="reg-b" size="md" titleText="Region" label="Region" items={['All regions', ...d.regions]} itemToString={(i: string | null) => i ?? ''} selectedItem={regPick ?? 'All regions'} onChange={({ selectedItem }) => set({ region: selectedItem === 'All regions' ? null : selectedItem })} />
       )}
       {role === 'bu' && (
         <Dropdown id="bu" size="md" titleText="Business unit" label="Business unit" items={d.units} itemToString={(i: any) => i?.name ?? ''} selectedItem={unit} onChange={({ selectedItem }) => selectedItem && set({ bu: selectedItem.bu })} />
@@ -307,17 +277,20 @@ export default function Challenge() {
   ) : undefined
 
   const agreedN = items.filter((i) => i.status === 'agreed').length
-  const open = items.reduce((a, i) => a + i.bus.filter((b: any) => b.status === 'negotiating').length, 0)
   const sum = (f: (i: any) => number) => items.reduce((a, i) => a + f(i), 0)
-  const current = sum(familyNow)
+  const regDone = sum((i) => i.n_regions_agreed), regAll = sum((i) => i.n_regions)
+  const sent = items.filter((i) => i.consolidated !== null).length
+  const buDone = sum((i) => i.n_agreed), buAll = sum((i) => i.bus.length)
   const modelT = sum((i) => i.model)
   // a BU head only sees families their unit sells
-  const shown = role === 'bu' && unit ? items.filter((i) => i.bus.some((b: any) => b.bu === unit.bu)) : items
+  const unitFilter = role === 'bu' ? unit : role === 'sd' ? sdUnit : null
+  const byUnit = unitFilter ? items.filter((i) => i.bus.some((b: any) => b.bu === unitFilter.bu)) : items
+  // with a region chosen the table shows that region's part of each family
+  const shown = regPick ? byUnit.map((i) => { const x = i.regional.find((r: any) => r.region === regPick); return x ? { ...i, model: x.model, last_year: x.last_year, regional_total: x.qty, agreed: null, consolidated: null } : null }).filter(Boolean) as any[] : byUnit
 
   const cols: Col<any>[] = [
     { header: 'Family', cell: (r) => r.family, sort: (r) => String(r.family).toLowerCase() },
     { header: 'Model (units)', num: true, cell: (r) => fmtN(r.model), sort: (r) => r.model },
-    { header: 'Same month last year (units)', num: true, cell: (r) => fmtN(r.last_year), sort: (r) => r.last_year },
     { header: 'Regional total (units)', num: true, cell: (r) => fmtN(r.regional_total), sort: (r) => r.regional_total },
     { header: 'Current number (units)', num: true, cell: (r) => fmtN(familyNow(r)), sort: (r) => familyNow(r) },
     { header: 'Against the model (%)', num: true, cell: (r) => { const g = gap(familyNow(r), r.model); return <Delta value={g} text={fmtSigned(g, 1)} /> }, sort: (r) => gap(familyNow(r), r.model) },
@@ -333,39 +306,30 @@ export default function Challenge() {
         {q.isPending ? null : q.isError ? <ApiErrorNotification error={q.error} fallbackTitle="Could not load the forecast challenge" onRetry={() => void q.refetch()} /> : (
           <div className="stack-05">
             <StatRow items={[
-              { label: 'Families agreed', value: `${agreedN} of ${items.length}`, sublabel: 'Every business unit has agreed' },
-              { label: 'Unit conversations open', value: open, sublabel: 'Across all families, this month' },
-              { label: 'Sales team number (units)', value: fmtN(current), sublabel: 'Agreed, or the latest proposal, added up' },
-              { label: 'Against the model', value: <Delta value={gap(current, modelT)} text={fmtSigned(gap(current, modelT), 1)} />, sublabel: `Model ${fmtN(modelT)} units` },
+              { label: '1. Model forecast', info: 'The demand the model projects for the month, as shown on the Supply and production plan screen.', value: fmtN(modelT), sublabel: `${d.months[0].label}, units` },
+              { label: '2. Regional heads send', info: 'Each Regional Head sends a number for every family. Simulated.', value: `${regDone} of ${regAll}`, sublabel: 'Regional numbers agreed' },
+              { label: '3. S&D Head forwards', info: 'The S&D Head adds the regional numbers up and sends the total to the business unit heads.', value: `${sent} of ${items.length}`, sublabel: 'Families sent to the BU heads' },
+              { label: '4. BU heads agree', info: 'Each business unit head accepts the number or counters it, and it goes back and forth until they agree.', value: `${buDone} of ${buAll}`, sublabel: 'Unit conversations agreed' },
+              { label: '5. Final number', info: 'Agreed families are planned on their agreed number in the Supply and production plan and Procurement.', value: `${agreedN} of ${items.length}`, sublabel: <>Families final. <Link to="/supply">Open the plan</Link></> },
             ]} />
-            {role !== 'regional' && (
-              <ContentSwitcher size="md" selectedIndex={PAGES.findIndex((p) => p.id === page)} onChange={({ index = 0 }) => set({ page: PAGES[index].id })}>
-                {PAGES.map((p) => <Switch key={p.id} name={p.id} text={p.label} />)}
-              </ContentSwitcher>
-            )}
-            {role === 'regional' || page === 'families' ? (
+            {(
               <>
                 <PageSection title={`${d.months.find((m: any) => m.m === month)?.label}`} note={role === 'regional'
                   ? `You are viewing as the Regional Head for ${region}. Set your numbers, then submit.`
                   : role === 'bu' ? `You are viewing as the head of ${unit?.name}. Select a family to see your unit's number and respond.`
                   : 'Select a family to see the evidence, the regional numbers and the conversation with each business unit.'}>
                   {role !== 'regional' && (
-                    <DataCard id="fam" title="Families" description="Every family for the month, with where its number stands" cols={cols} rows={shown}
+                    <DataCard id="fam" title="Families" description="Every family for the month and the step it has reached. Select one to open it" cols={cols} rows={shown}
                       itemsLabel="Families per page" rowKey={(r) => r.family} onRow={(r) => set({ family: r.family })} selected={(r) => r.family === family?.family} />
                   )}
                 </PageSection>
                 {role === 'regional' ? <RegionalPanel key={`${month}|${region}`} items={items} region={region} month={month} onDone={onDone} />
                   : family ? <FamilyPanel key={`${family.month}|${family.family}|${role}`} it={family} role={role} buPick={role === 'bu' ? unit?.bu ?? null : params.get('bu')} onPick={(bu) => set({ bu })} onDone={onDone}
-                    section={section} onSection={(x) => set({ section: x })} stamp={q.dataUpdatedAt} /> : null}
+                    section={section} onSection={(x) => set({ section: x })} regionFilter={regPick} /> : null}
               </>
-            ) : page === 'checks' ? (
-              <Checks month={month} lead={d.months.find((m: any) => m.m === month)?.lead ?? 1} items={items} onOpen={(f, bu) => set({ family: f, bu, page: 'families', section: 'units', role: role === 'bu' ? 'bu' : 'sd' })} />
-            ) : page === 'units' ? (
-              <UnitsView items={items} units={d.units} onOpen={(bu) => set({ bu, role: 'bu', page: 'families' })} />
-            ) : (
-              <ActivityCard stamp={q.dataUpdatedAt} month={month} title={`${d.months.find((m: any) => m.m === month)?.label}: everything that has happened`} />
             )}
-            <p className="footnote">All submissions are simulated placeholders. Numbers are units of orders received. Once a unit has agreed, its number is part of the sales team forecast on the Outlook screen.</p>
+            <ActivityCard stamp={q.dataUpdatedAt} month={month} title={`${d.months[0].label}: everything that has happened`} />
+            <p className="footnote">All submissions are simulated placeholders. Numbers are units of orders received. Once every unit has agreed a family, the Supply and production plan and Procurement use that number.</p>
           </div>
         )}
       </NeedsData>
