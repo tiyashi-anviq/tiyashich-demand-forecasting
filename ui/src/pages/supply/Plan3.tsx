@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import type { Filters } from '../../lib/filters'
 import { Link } from 'react-router-dom'
 import { Dropdown, Tag, Tile } from '@reiq/ui/carbon'
 import { getJson } from '../../lib/http'
@@ -24,7 +25,7 @@ function Pick({ id, title, items, value, onChange, toStr, allLabel }: { id: stri
 }
 
 /** The coming month (the one after the last actuals) as one chain: demand forecast, inventory check, production plan, raw material procurement, then manufacturing by plant. */
-export default function Plan3() {
+export default function Plan3({ f }: { f: Filters }) {
   const [plant, setPlant] = useState(ALL)
   const [fl, setFl] = useState<Record<string, string>>({})
   const setF = (k: string) => (v: string | null) => setFl((c) => ({ ...c, [k]: v ?? ALL }))
@@ -42,9 +43,9 @@ export default function Plan3() {
           const shown: [string, number][] = [[m[0], 0]]
           const mo0 = monthLong(m[0])
           // the filters at the top narrow the product-based views; a region's part of a product is its share of that product's recent orders
-          const filtered = F('gf') !== ALL || F('gc') !== ALL || F('gr') !== ALL
-          const scoped: any[] = (d.products as any[]).filter((r) => (F('gf') === ALL || r.family === F('gf')) && (F('gc') === ALL || r.sub === F('gc'))).map((r) => {
-            const k = F('gr') === ALL ? 1 : (r.reg?.[F('gr')] ?? 0)
+          const filtered = f.family.length > 0 || f.product.length > 0 || f.region.length > 0 || F('gc') !== ALL
+          const scoped: any[] = (d.products as any[]).filter((r) => (!f.family.length || f.family.includes(r.family)) && (!f.product.length || f.product.includes(r.sku)) && (F('gc') === ALL || r.sub === F('gc'))).map((r) => {
+            const k = f.region.length === 0 ? 1 : f.region.reduce((a: number, g: string) => a + (r.reg?.[g] ?? 0), 0)
             return k === 1 ? r : { ...r, prod: r.prod.map((x: number) => x * k), demand: r.demand.map((x: number) => x * k), close: r.close.map((x: number) => x * k), need: r.need.map((x: number) => x * k), nxt: r.nxt.map((x: number) => x * k) }
           })
           const famAgg: Record<string, any> = {}
@@ -141,13 +142,11 @@ export default function Plan3() {
                 { label: 'Plant-lines at full capacity', info: G.utilisation, value: String(full0), sublabel: `Counted by plant and line in ${mo0}. Est.` },
               ]} />
               <Findings title="What the plan shows" items={notes} />
-              <div className="row-03 filter-row">
-                <Pick id="p3-gf" title="Product family" items={uniq(d.products.map((r: any) => r.family))} value={F('gf')} onChange={setF('gf')} />
+              <div className="row-03 filter-row pin-row">
                 <Pick id="p3-gc" title="Category" items={uniq(d.products.map((r: any) => r.sub).filter(Boolean))} value={F('gc')} onChange={setF('gc')} />
-                <Pick id="p3-gr" title="Region" items={uniq(d.products.flatMap((r: any) => Object.keys(r.reg ?? {})))} value={F('gr')} onChange={setF('gr')} />
                 <Pick id="p3-plant" title="Plant (manufacturing)" items={pnames} value={plant} onChange={(v) => setPlant(v ?? ALL)} allLabel="All plants" />
               </div>
-              {filtered ? <p className="footnote">Family, category and region narrow the demand, inventory and product views. A region's part of a product is its share of that product's recent orders. The manufacturing, plant and raw-material sections stay network-wide, because plants and lines serve every region.</p> : null}
+              {filtered ? <p className="footnote">The filters at the top and the category narrow the demand, inventory and product views. A region's part of a product is its share of that product's recent orders. The manufacturing, plant and raw-material sections stay network-wide, because plants and lines serve every region.</p> : null}
               <ChartCard title="Demand forecast and stock by family" info={`For ${mo0}: the demand forecast, what must be made or bought to meet it and to rebuild stock, what the plants can make, and the stock left at month end, by product family.`} subtitle={`Stock counted at ${d.stock_week} and rolled to 1 ${mo0} using recent sales`}
                 chart={<TrendChart kind="labels" zero x={famList} series={keys.map((k, i) => ({ name: names[i], values: famList.map((f) => fv(f, k)) }))} yTitle="Units" label={`Demand, production and stock in ${mo0}, by family`} />}
                 headers={['Family', ...names]} rows={famList.map((f) => [f, ...keys.map((k) => fmtN(fv(f, k)))])} label={`Demand, production and stock in ${mo0}, by family`}

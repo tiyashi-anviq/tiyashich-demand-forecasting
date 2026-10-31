@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Analytics, ChartLine, Chat, Upload, Rain, DeliveryParcel, Product, ShoppingCart, Box } from '@carbon/icons-react'
 import { ApiErrorCopyProvider, AppScaffold, AuthProvider, ModuleShell, ThemeProvider, ToastProvider, type NavItem } from '@reiq/ui'
@@ -13,6 +14,24 @@ import ProcurementHub from './pages/ProcurementHub'
 import SupplyPlan from './pages/SupplyPlan'
 
 export const MODULE = 'Demand planning'
+
+/** Measures the part of the page header that stays pinned (its filter bar) so the tab row and in-tab filters can pin right under it. */
+function usePinnedHeaderHeight() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const set = () => {
+      const h = document.querySelector<HTMLElement>('.module-page-header-pin-toolbar')
+      const off = parseFloat(h?.style.getPropertyValue('--module-page-header-toolbar-offset') ?? '0') || 0
+      const v = h ? `${Math.max(0, Math.round(h.offsetHeight - off))}px` : '0px'
+      if (document.documentElement.style.getPropertyValue('--pinned-header-h') !== v) document.documentElement.style.setProperty('--pinned-header-h', v)
+    }
+    set()
+    const id = window.setInterval(set, 300)  // the header can appear, grow or lose its filters after the page loads
+    return () => { window.clearInterval(id); document.documentElement.style.setProperty('--pinned-header-h', '0px') }
+  }, [pathname])
+}
+
+function PinnedHeader() { usePinnedHeaderHeight(); return null }
 
 const NAV: NavItem[] = [
   // the story: bring the data in, understand it, forecast demand, test the forecast, cover demand with no history, then turn it into supply
@@ -43,6 +62,7 @@ export function App() {
           <ApiErrorCopyProvider copy={ERROR_COPY}>
             <ToastProvider>
               <BrowserRouter>
+                <PinnedHeader />
                 <AppScaffold label={MODULE}>
                   <ModuleShell label={MODULE} nav={NAV}>
                     <Routes>

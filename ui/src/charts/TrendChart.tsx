@@ -10,7 +10,7 @@ export type TrendPoint = { group: string; index: number }
  *  The axis title carries the unit. `markers` draw a labelled line at a position; `onPick` makes every point
  *  clickable and says which series and which position was chosen. */
 export default function TrendChart({
-  x, series, kind = 'month', yTitle, yFmt = fmtN, zero = true, markers, onPick, label, pointsAlways, dotRadius = 3, noDots = false, height = CHART_HEIGHT,
+  x, series, kind = 'month', yTitle, yFmt = fmtN, zero = true, markers, onPick, label, pointsAlways, dotRadius = 3, noDots = false, height = CHART_HEIGHT, legend = true,
 }: {
   x: string[]
   series: Series[]
@@ -28,6 +28,8 @@ export default function TrendChart({
   noDots?: boolean
   /** Canvas height in pixels; a wide, dense series (weeks over two years) needs more than the standard card height. */
   height?: number | string
+  /** false when the page draws its own switchable legend */
+  legend?: boolean
 }) {
   const { tone, token, base } = useChartKit()
   const ref = useRef<any>(null)
@@ -52,7 +54,7 @@ export default function TrendChart({
     timeScale: { addSpaceOnEdges: 0 },
     grid: { x: { enabled: false } },
     points: { enabled: !noDots && (pointsAlways || onPick !== undefined || x.length <= 40), radius: dotRadius },
-    legend: { enabled: series.length > 1, truncation: { type: 'none' } },
+    legend: { enabled: legend && series.length > 1, truncation: { type: 'none' } },
     color: { scale: Object.fromEntries(series.map((s, k) => [s.name, tone((s.tone ?? ((k % 8) + 1)) as Tone)])) },
     tooltip: { truncation: { type: 'none' }, showTotal: false, valueFormatter: (v: number | string | Date) => (typeof v === 'number' ? yFmt(v) : v instanceof Date ? v.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : String(v)) },
   }
@@ -63,5 +65,5 @@ export default function TrendChart({
     events.addEventListener('scatter-click', handler)
     return () => events.removeEventListener('scatter-click', handler)
   })
-  return <LineChart ref={ref} data={data} options={options} />
+  return <LineChart key={`${x.length}|${series.length}|${x[0]}`} ref={ref} data={data} options={options} />
 }

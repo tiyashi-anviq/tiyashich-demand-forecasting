@@ -39,7 +39,7 @@ def _split(s):
     return [x for x in s.split("~") if x] if s else None
 
 
-def view(depot=None, family=None, status=None, product=None) -> dict:
+def view(depot=None, family=None, status=None, product=None, region=None) -> dict:
     t = _t()
     cur = t["cur"].copy()
     nm = t["norms"]
@@ -76,6 +76,11 @@ def view(depot=None, family=None, status=None, product=None) -> dict:
         cur = cur[cur["depot"].isin(dep)]
         moves = [m for m in moves if m["source"] in dep or m["target"] in dep]
         orders = [o for o in orders if o["depot"] in dep]
+    if reg_ := _split(region):
+        cur = cur[cur["region"].isin(reg_)]
+        keep = set(cur["depot"])
+        moves = [m for m in moves if m["source"] in keep or m["target"] in keep]
+        orders = [o for o in orders if o["depot"] in keep]
     if fam := _split(family):
         cur = cur[cur["family"].isin(fam)]
         moves = [m for m in moves if m["family"] in fam]

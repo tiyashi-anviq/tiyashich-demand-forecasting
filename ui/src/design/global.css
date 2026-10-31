@@ -97,8 +97,12 @@
 .challenge-bar .cds--dropdown__wrapper, .challenge-bar .cds--list-box__wrapper { inline-size: 14rem; }
 
 /* Only the tab row stays pinned while scrolling; the title and filters scroll away with the page instead of taking a third of the screen. */
-.module-shell-content .module-page-header.module-page-header-sticky { position: relative; top: auto; }
-.module-shell-content .tabbed-view-row.tabs-sticky { top: calc(var(--cds-spacing-10) - var(--cds-spacing-03)); }
+/* Filters stay in view while scrolling. A header with a filter bar pins it under the page bar (the library's pin-toolbar), and the tab row,
+   if there is one, pins right under that. --pinned-header-h is the height of the pinned part of the header, measured in App. */
+.module-shell-content .tabbed-view-row.tabs-sticky { top: calc(var(--cds-spacing-10) - var(--cds-spacing-03) + var(--pinned-header-h, 0px)); }
+/* Filters inside a tab pin below the tab row. */
+.module-shell-content .pin-row { position: sticky; z-index: 150; top: calc(var(--cds-spacing-10) - var(--cds-spacing-03) + var(--pinned-header-h, 0px) + var(--cds-spacing-09)); background: var(--reiq-ui-background); padding-block: var(--cds-spacing-03); border-block-end: 1px solid var(--cds-border-subtle-01, #e0e0e0); }
+.module-shell-content .tabs-sticky ~ * .pin-row, .module-shell-content .pin-row { margin-block: 0; }
 
 /* run view legend: each swatch repeats the line's colour and pattern */
 .line-swatch { display: inline-block; inline-size: 1.75rem; margin-inline-end: 0.5rem; border-block-start: 3px solid var(--reiq-chart-1); }

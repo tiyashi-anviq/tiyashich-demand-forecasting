@@ -106,10 +106,6 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
           { header: `${run} bias (%)`, num: true, cell: (r) => fmtSigned(r[run]?.bias, 1), sort: (r) => r[run]?.bias },
           { header: "Last year's number, accuracy (%)", num: true, cell: (r) => (w(r, 'last_year') === null ? '–' : fmtPct(w(r, 'last_year') as number, 1)), sort: (r) => w(r, 'last_year') },
         ]
-        const methodCols: Col<any>[] = [
-          { header: 'Method', cell: (r) => r.name },
-          { header: `${run} accuracy (%)`, num: true, cell: (r) => (w(r, run) === null ? '–' : fmtPct(w(r, run) as number, 1)), sort: (r) => w(r, run) },
-        ]
         return (
           <>
             {!only && (
@@ -228,7 +224,7 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
               ]
               return (
                 <>
-                  <div className="challenge-bar">
+                  <div className="challenge-bar pin-row">
                     <Dropdown id="vm" size="md" titleText="Target month" label="Target month" items={choices} itemToString={(m: string | null) => (m ? `${monthLong(m)}${xs.indexOf(m) >= ms.length ? ' (open)' : ''}` : '')}
                       selectedItem={sel} onChange={({ selectedItem }) => selectedItem && setVm(selectedItem)} />
                   </div>
@@ -280,9 +276,6 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
               description={view === 'National' ? 'The whole selection added together, month by month' : 'Each one added up over its own series, month by month'}
               cols={accCols} rows={dimRows} itemsLabel="Rows per page" rowKey={(r) => String(r.label)}
               note="Accuracy is on the months from Oct 2025 the model never saw. Bias above zero means the forecast ran high." />
-            <DataCard id="methods" title={`${run} accuracy of each method`} description="The three methods on their own against the blend, same test months"
-              cols={methodCols} rows={d.methods} itemsLabel="Methods per page" rowKey={(r) => r.name} />
-
             {d.team && (
               <Tile className="card stack-05">
                 <div className="row-between">

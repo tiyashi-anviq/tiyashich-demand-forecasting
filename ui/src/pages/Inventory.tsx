@@ -4,6 +4,7 @@ import { ModulePageHeader } from '@reiq/ui'
 import { ComboBox, Dropdown, NumberInput, Tag, TableContainer, Tile } from '@reiq/ui/carbon'
 import { MODULE } from '../App'
 import { useBuild, useView } from '../lib/useView'
+import type { Filters } from '../lib/filters'
 import { fmtDate, fmtN, fmtPct } from '../lib/format'
 import { DataCard, type Col } from '../ui/DataCard'
 import { Delta, StatRow } from '../ui/StatRow'
@@ -51,13 +52,12 @@ function ProductionEffect({ sim }: { sim: { required: number; from_transfers: nu
 
 const tone = (s: string) => (s === 'Short' ? 'red' : s === 'Over-stocked' ? 'purple' : 'green')
 
-export default function Inventory({ embedded = false }: { embedded?: boolean }) {
+export default function Inventory({ embedded = false, f }: { embedded?: boolean; f?: Filters }) {
   const build = useBuild('eda')
   const [depot, setDepot] = useState(ALL), [fam, setFam] = useState(ALL), [prod, setProd] = useState<string | null>(null), [st, setSt] = useState('All flagged')
   const qs = new URLSearchParams()
   if (depot !== ALL) qs.set('depot', depot)
-  if (fam !== ALL) qs.set('family', fam)
-  if (prod) qs.set('product', prod)
+  if (f) { if (f.family.length) qs.set('family', f.family.join('~')); if (f.product.length) qs.set('product', f.product.join('~')); if (f.region.length) qs.set('region', f.region.join('~')) } else { if (fam !== ALL) qs.set('family', fam); if (prod) qs.set('product', prod) }
   if (st !== 'All flagged') qs.set('status', st)
   const q = useView<any>('inventory', 'view', qs.toString(), build.data?.state === 'ready')
   const o = q.data?.options
@@ -65,10 +65,10 @@ export default function Inventory({ embedded = false }: { embedded?: boolean }) 
   const toolbar = o ? (
           <div className="row-03">
             <Dropdown id="iv-d" size="md" titleText="Depot" label="Depot" items={[ALL, ...o.depots.map((d: any) => d.id)]} itemToString={(i: string | null) => (i && i !== ALL ? `${i} · ${dn(i)}` : i ?? '')} selectedItem={depot} onChange={({ selectedItem }: any) => selectedItem && setDepot(selectedItem)} />
-            <Dropdown id="iv-f" size="md" titleText="Product family" label="Family" items={[ALL, ...o.families]} itemToString={(i: string | null) => i ?? ''} selectedItem={fam} onChange={({ selectedItem }: any) => selectedItem && setFam(selectedItem)} />
+            {!f && (<><Dropdown id="iv-f" size="md" titleText="Product family" label="Family" items={[ALL, ...o.families]} itemToString={(i: string | null) => i ?? ''} selectedItem={fam} onChange={({ selectedItem }: any) => selectedItem && setFam(selectedItem)} />
             <ComboBox id="iv-p" size="md" titleText="Product" placeholder="All products" items={o.products.map((x: any) => ({ id: x.id, label: `${x.id} · ${x.name}` }))} itemToString={(i: any) => i?.label ?? ''}
               shouldFilterItem={({ item, inputValue }: any) => !inputValue || item.label.toLowerCase().includes(inputValue.toLowerCase())}
-              selectedItem={prod ? { id: prod, label: `${prod} · ${o.products.find((x: any) => x.id === prod)?.name ?? ''}` } : null} onChange={({ selectedItem }: any) => setProd(selectedItem ? selectedItem.id : null)} />
+              selectedItem={prod ? { id: prod, label: `${prod} · ${o.products.find((x: any) => x.id === prod)?.name ?? ''}` } : null} onChange={({ selectedItem }: any) => setProd(selectedItem ? selectedItem.id : null)} /></>)}
           </div>
         ) : undefined
   return (

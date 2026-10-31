@@ -8,9 +8,9 @@ export const PERIODS = [
 ]
 
 /** The page's filters, for the header toolbar. `period` and `measure` are off on screens that do not use them. */
-export function FilterBar({ f, set, reset, dirty, opts, period = false, measure = false, measureLocked = false }: {
+export function FilterBar({ f, set, reset, dirty, opts, period = false, measure = false, measureLocked = false, channel = true }: {
   f: Filters; set: (p: Partial<Filters>) => void; reset: () => void; dirty: boolean; opts: Options
-  period?: boolean; measure?: boolean; measureLocked?: boolean
+  period?: boolean; measure?: boolean; measureLocked?: boolean; channel?: boolean
 }) {
   const multi = (key: 'family' | 'region' | 'channel', title: string, all: string) => (
     <MultiSelect id={`flt-${key}`} size="md" titleText={title} label={f[key].length ? `${f[key].length} selected` : all} items={opts[key]}
@@ -21,7 +21,7 @@ export function FilterBar({ f, set, reset, dirty, opts, period = false, measure 
     <div className="filter-bar" role="group" aria-label="Filters">
       {multi('family', 'Product family', 'All families')}
       {multi('region', 'Region', 'All regions')}
-      {multi('channel', 'Channel', 'All channels')}
+      {channel && multi('channel', 'Channel', 'All channels')}
       {opts.product && (
         <MultiSelect id="flt-product" size="md" titleText="Product" label={f.product.length ? `${f.product.length} selected` : 'All products'} items={opts.product}
           itemToString={(i: { id: string; label: string }) => i?.label ?? ''} selectedItems={opts.product.filter((p) => f.product.includes(p.id))}

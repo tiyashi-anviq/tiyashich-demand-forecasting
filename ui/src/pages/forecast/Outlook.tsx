@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ComboBox, ContentSwitcher, Dropdown, Switch, Tag } from '@reiq/ui/carbon'
+import { Button, ComboBox, ContentSwitcher, Dropdown, Switch, Tag } from '@reiq/ui/carbon'
 import { fmtN, fmtPct, fmtSigned, monthLong } from '../../lib/format'
 import { getJson } from '../../lib/http'
 import { queryOf, type Filters } from '../../lib/filters'
@@ -24,7 +24,7 @@ const weekLong = (s: string) => { const [y, m, d] = s.split('-'); return `${+d} 
 
 export default function Outlook({ f, onClear }: { f: Filters; onClear: () => void }) {
   const [by, setBy] = useState<(typeof BY)[number]>('family')
-  const [showP50, setShowP50] = useState(false)
+  const [hid, setHid] = useState<Record<string, boolean>>({ 'P50 (median)': true })  // the P50 line starts hidden; each line is switched from the legend
   const [pick, setPick] = useState<number | null>(null)
   const [pickW, setPickW] = useState<string | null>(null)
   const q = useView<any>('forecast', 'outlook', queryOf(f, undefined, { by }, false))
@@ -64,9 +64,6 @@ export default function Outlook({ f, onClear }: { f: Filters; onClear: () => voi
 
             <ChartCard title="Weekly orders: the test period, then the forecast to Dec 2027"
               toolbar={<>
-                <ContentSwitcher size="sm" selectedIndex={showP50 ? 1 : 0} onChange={({ index = 0 }) => setShowP50(index === 1)}>
-                  <Switch name="fc" text="Forecast" /><Switch name="fcp" text="Forecast and P50" />
-                </ContentSwitcher>
                 <Dropdown id="why-month" size="sm" titleText="" label="Month" items={d.fmonths.map((m: string, i: number) => ({ id: i, label: monthLong(m) }))}
                   itemToString={(i: any) => i?.label ?? ''} selectedItem={pick === null ? null : { id: pick, label: monthLong(d.fmonths[pick]) }}
                   onChange={({ selectedItem }: any) => { setPick(selectedItem ? selectedItem.id : null); setPickW(null) }} />
@@ -78,9 +75,9 @@ export default function Outlook({ f, onClear }: { f: Filters; onClear: () => voi
               subtitle="Units of orders received per week, from the start of the test period (Oct 2025). Before the forecast starts, the forecast line is what the model predicted in advance for weeks it had not seen, so you can compare it with the actuals. Pick a month to see why it looks that way, then a week in it to see that week."
               label="Weekly orders received from October 2025, with the model forecast and P50 to December 2027"
               headers={tbl.headers} rows={tbl.rows}
-              chart={<TrendChart kind="week" noDots zero={false} x={wk.dates} series={showP50 ? series : series.filter((s) => !s.name.startsWith('P50'))} yTitle="Orders received per week (units)" yFmt={(n) => fmtN(n)}
+              chart={<div className="stack-03"><div className="row-03" role="group" aria-label="Choose which lines to show">{series.map((s) => { const on = !hid[s.name]; return (<Button key={s.name} kind={on ? 'tertiary' : 'ghost'} size="sm" aria-pressed={on} onClick={() => setHid({ ...hid, [s.name]: on })}><span className={`line-swatch tone-${s.tone} ${on ? '' : 'off'}`} aria-hidden="true" />{s.name}</Button>) })}</div><TrendChart legend={false} kind="week" noDots zero={false} x={wk.dates} series={series.filter((s) => !hid[s.name])} yTitle="Orders received per week (units)" yFmt={(n) => fmtN(n)}
                 markers={wk.forecast_starts ? [{ i: wk.dates.indexOf(wk.forecast_starts), label: 'Forecast starts' }] : []}
-                label="Weekly orders received from October 2025, with the model forecast and P50 to December 2027" />}
+                label="Weekly orders received from October 2025, with the model forecast and P50 to December 2027" /></div>}
               note={<>Each point is one week (Monday start). Oct 2025 to Sep 2026 are weeks the model had not seen: each month&apos;s forecast was made ahead of time, so the gap to the actual line is the real miss. Each month&apos;s forecast is split across its weeks using the weekly model&apos;s own shape, so the build-up before a festival shows week by week. October 2026 is only partly in. The P50 is the forecast times the median past miss for these filters, so half of the weeks landed above it. <Tag type="cool-gray" size="sm" title="Computed from the model, not an actual">Est.</Tag></>} />
 
             {/* below the chart, not above it: opening it must not push the graph off the screen */}

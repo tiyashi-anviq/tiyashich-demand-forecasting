@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Filters } from '../../lib/filters'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ComboBox, Dropdown, NumberInput, Tag } from '@reiq/ui/carbon'
+import { Dropdown, NumberInput, Tag } from '@reiq/ui/carbon'
 import { NumField } from '../../ui/NumField'
 import { getJson } from '../../lib/http'
 import { fmtN, fmtPct, monthLong } from '../../lib/format'
@@ -18,8 +19,11 @@ const AUTO_R = 'All regions'
 const day = (n: number | null | undefined) => (n === null || n === undefined ? 'Not reached' : `Day ${Math.round(n)}`)
 
 /** A vendor stops delivering a raw material, a fallback vendor steps in, and what that does to production, OTIF and the plan. */
-export default function Disruption() {
-  const [product, setProduct] = useState<string | null>(null), [region, setRegion] = useState(AUTO_R), [plant, setPlant] = useState('All plants')
+export default function Disruption({ f }: { f: Filters }) {
+  // the page filters decide the product and region; the scenario works on one of each, so more than one selected means all
+  const product: string | null = f.product.length === 1 ? f.product[0] : null
+  const region = f.region.length === 1 ? f.region[0] : AUTO_R
+  const [plant, setPlant] = useState('All plants')
   const opts = useQuery({ queryKey: ['dis', 'options', product], queryFn: () => getJson<any>(`/api/supply/disruption-options${product ? `?product=${encodeURIComponent(product)}` : ''}`), staleTime: Infinity, placeholderData: (p: any) => p })
   const [vendor, setVendor] = useState<string | null>(null), [fb, setFb] = useState(AUTO), [month, setMonth] = useState<string | null>(null)
   const [weeks, setWeeks] = useState(6), [short, setShort] = useState(100), [bcap, setBcap] = useState(60), [lag, setLag] = useState(2), [cover, setCover] = useState<number | null>(null)
@@ -65,12 +69,6 @@ export default function Disruption() {
       {o ? (
         <>
           <div className="row-03">
-            <div style={{ inlineSize: 'min(34rem, 100%)' }}>
-            <ComboBox id="ds-p" size="md" titleText="Product whose demand drives the plan" placeholder="All products" items={o.products ?? []} itemToString={(i: any) => (i ? i.label : '')}
-              selectedItem={(o.products ?? []).find((x: any) => x.id === product) ?? null} shouldFilterItem={({ item, inputValue }: any) => !inputValue || item.label.toLowerCase().includes(inputValue.toLowerCase())}
-              onChange={({ selectedItem }: any) => { setProduct(selectedItem ? selectedItem.id : null); setFb(AUTO) }} />
-            </div>
-            <Dropdown id="ds-r" size="md" titleText="Region" label="Region" items={[AUTO_R, ...(o.regions ?? [])]} selectedItem={region} onChange={({ selectedItem }: any) => selectedItem && setRegion(selectedItem)} />
             <Dropdown id="ds-pl" size="md" titleText="Plant" label="Plant" items={['All plants', ...(o.plants ?? [])]} selectedItem={plant} onChange={({ selectedItem }: any) => selectedItem && setPlant(selectedItem)} />
           </div>
           <div className="row-03">
