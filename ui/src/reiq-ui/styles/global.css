@@ -1,0 +1,215 @@
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid var(--reiq-focus);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Fixed-width digits wherever numbers are compared down a column or across
+   tiles: Vend Sans's default digits each have their own width, so 111 is
+   narrower than 000 and a column of numbers wobbles. Running text keeps the
+   default. Anything else that shows a number to compare takes .tabular-nums. */
+.cds--data-table,
+.cds--structured-list,
+.kpi-tile,
+.cds--cc--axes,
+.cds--cc--tooltip,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A column of figures in a table: right-aligned, mono, tabular digits, so decimals line up down the
+   column. Put on both the header cell and the body cells; the unit goes in the header. */
+.cell-num {
+  text-align: right;
+  font-family: var(--reiq-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Shared "soft refresh" feedback for anything re-fetching in place. */
+.pulse-refresh {
+  animation: pulse-refresh 1s ease-in-out infinite;
+}
+
+@keyframes pulse-refresh {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.surface-elevated {
+  box-shadow: var(--reiq-shadow-resting);
+  transition:
+    box-shadow var(--reiq-motion-fast),
+    transform var(--reiq-motion-fast);
+}
+
+.surface-elevated:hover {
+  box-shadow: var(--reiq-shadow-raised);
+}
+
+.surface-interactive:hover {
+  transform: translateY(-1px);
+}
+
+.focus-ring-inset:focus-within {
+  box-shadow: 0 0 0 1px var(--reiq-focus);
+}
+
+/* Carbon paints an overflow-menu item's focus ring on bare :focus, and
+   opening one with a mouse paints a ring that reads as a selection rather
+   than as focus. Suppressed for pointer focus only. */
+.cds--overflow-menu-options__btn:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.cds--overflow-menu-options__option--danger
+  .cds--overflow-menu-options__btn:focus:not(:focus-visible) {
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--reiq-text-secondary);
+}
+
+.cds--overflow-menu-options__option--danger
+  .cds--overflow-menu-options__btn:focus:not(:focus-visible)
+  svg {
+  fill: var(--reiq-icon-secondary);
+}
+
+/* Thin, quiet scrollbar for every independently-scrolling pane. */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--reiq-scrollbar-thumb) transparent;
+}
+
+.thin-scroll::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.thin-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--reiq-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--reiq-text-helper);
+}
+
+/* One weight up, for the module's main content pane. Composes with
+   .thin-scroll -- apply both. */
+.thin-scroll-strong::-webkit-scrollbar {
+  width: 5px;
+}
+
+.thin-scroll-strong::-webkit-scrollbar-thumb {
+  background: var(--reiq-icon-secondary);
+}
+
+/* Horizontal scroll for a wide data table. min-width: 0 is load-bearing
+   inside a flex or grid parent. */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.thin-scroll .cds--data-table-content,
+.table-scroll .cds--data-table-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--reiq-scrollbar-thumb) transparent;
+}
+
+.thin-scroll .cds--data-table-content::-webkit-scrollbar,
+.table-scroll .cds--data-table-content::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.thin-scroll .cds--data-table-content::-webkit-scrollbar-track,
+.table-scroll .cds--data-table-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scroll .cds--data-table-content::-webkit-scrollbar-thumb,
+.table-scroll .cds--data-table-content::-webkit-scrollbar-thumb {
+  background: var(--reiq-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+/* A full-width page's own bounded scrolling pane, sized against this app's
+   top bar. Mobile keeps whole-page scroll. */
+.page-scroll-pane {
+  max-height: calc(100vh - var(--reiq-size-topbar));
+  max-height: calc(100dvh - var(--reiq-size-topbar));
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 671px) {
+  .page-scroll-pane {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+.app-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cds-spacing-04);
+  flex-wrap: wrap;
+}
+
+.side-panel-section-label {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  letter-spacing: var(--reiq-letter-spacing-caps);
+  text-transform: uppercase;
+  color: var(--reiq-text-helper);
+}
+
+.side-panel-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--cds-spacing-07);
+  height: var(--cds-spacing-07);
+  border: none;
+  background: none;
+  color: var(--reiq-icon-secondary);
+  cursor: pointer;
+}
+
+.side-panel-icon-button:hover {
+  background: var(--reiq-layer-hover);
+}

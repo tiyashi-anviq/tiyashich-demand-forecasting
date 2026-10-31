@@ -1,0 +1,18 @@
+/* ModuleShell's content pane, without the rail: the grey surface the header
+   card sits on, and the same padding-top the page bar's sticky maths assumes
+   (see .module-shell-page-bar). Side gutters come from the page's own Carbon
+   Grid. */
+.page-shell {
+  min-height: calc(100vh - var(--reiq-size-topbar));
+  min-height: calc(100dvh - var(--reiq-size-topbar));
+  padding-top: var(--cds-spacing-03);
+  padding-bottom: var(--cds-spacing-10);
+  background: var(--reiq-ui-01);
+}
+
+/* Pinned, the bar spans the whole pane, edge to edge, as in ModuleShell. Its content keeps
+   lining up with the header card inside the Carbon Grid (1rem margin + 1rem gutter). */
+.page-shell > .module-shell-page-bar {
+  margin-inline: 0;
+  --module-page-bar-inset: var(--cds-spacing-07);
+}

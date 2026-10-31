@@ -1,0 +1,167 @@
+[
+ {
+  "name": "Pongal / Makar Sankranti",
+  "Group": "PONGAL",
+  "date": "2027-01-15",
+  "Year": 2027,
+  "Day_Of_Week": "Friday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "South",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Republic Day",
+  "Group": "FIXED",
+  "date": "2027-01-26",
+  "Year": 2027,
+  "Day_Of_Week": "Tuesday",
+  "Moves_Each_Year": "N",
+  "Sell_In_Peak_Weeks_Before": null,
+  "Regions_Most_Relevant": "All",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Holi",
+  "Group": "HOLI",
+  "date": "2027-03-22",
+  "Year": 2027,
+  "Day_Of_Week": "Monday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "North",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Eid-ul-Fitr",
+  "Group": "EID",
+  "date": "2027-03-10",
+  "Year": 2027,
+  "Day_Of_Week": "Wednesday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "All (moderate)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com; Eid dates depend on moon sighting"
+ },
+ {
+  "name": "Eid-ul-Adha",
+  "Group": "EID",
+  "date": "2027-05-17",
+  "Year": 2027,
+  "Day_Of_Week": "Monday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": null,
+  "Regions_Most_Relevant": "Informational (not a modelled anchor)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com; Eid dates depend on moon sighting"
+ },
+ {
+  "name": "Raksha Bandhan",
+  "Group": "RAKHI",
+  "date": "2027-08-17",
+  "Year": 2027,
+  "Day_Of_Week": "Tuesday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "North, West",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Independence Day",
+  "Group": "FIXED",
+  "date": "2027-08-15",
+  "Year": 2027,
+  "Day_Of_Week": "Sunday",
+  "Moves_Each_Year": "N",
+  "Sell_In_Peak_Weeks_Before": null,
+  "Regions_Most_Relevant": "All",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Ganesh Chaturthi",
+  "Group": "GANESH",
+  "date": "2027-09-04",
+  "Year": 2027,
+  "Day_Of_Week": "Saturday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "West",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Onam (Thiruvonam)",
+  "Group": "ONAM",
+  "date": "2027-09-12",
+  "Year": 2027,
+  "Day_Of_Week": "Sunday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": null,
+  "Regions_Most_Relevant": "Informational (not a modelled anchor)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Navratri start",
+  "Group": "DURGA",
+  "date": "2027-09-30",
+  "Year": 2027,
+  "Day_Of_Week": "Thursday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": null,
+  "Regions_Most_Relevant": "Informational (not a modelled anchor)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Dussehra / Durga Puja",
+  "Group": "DURGA",
+  "date": "2027-10-10",
+  "Year": 2027,
+  "Day_Of_Week": "Sunday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.5,
+  "Regions_Most_Relevant": "East, North",
+  "Date_Source": "Bijoya Dashami on 10 Oct 2027 per the Durga Puja calendar supplied by the user (Mahalaya 29 Sep, Shashthi 5 Oct, Saptami 6 Oct, Ashtami 7 Oct, Navami 9 Oct); public calendars checked 30 Oct 2026 give Dussehra on 9 Oct, the same week"
+ },
+ {
+  "name": "Dhanteras",
+  "Group": "DIWALI",
+  "date": "2027-10-27",
+  "Year": 2027,
+  "Day_Of_Week": "Wednesday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": null,
+  "Regions_Most_Relevant": "Informational (not a modelled anchor)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Diwali",
+  "Group": "DIWALI",
+  "date": "2027-10-29",
+  "Year": 2027,
+  "Day_Of_Week": "Friday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 3.0,
+  "Regions_Most_Relevant": "East, North, West, South",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Chhath Puja",
+  "Group": "CHHATH",
+  "date": "2027-11-04",
+  "Year": 2027,
+  "Day_Of_Week": "Thursday",
+  "Moves_Each_Year": "Y",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "All (moderate)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ },
+ {
+  "name": "Christmas / New Year",
+  "Group": "XMAS",
+  "date": "2027-12-25",
+  "Year": 2027,
+  "Day_Of_Week": "Saturday",
+  "Moves_Each_Year": "N",
+  "Sell_In_Peak_Weeks_Before": 2.0,
+  "Regions_Most_Relevant": "All (moderate)",
+  "Date_Source": "Checked 30 Oct 2026 against officeholidays.com, hindupad.com, calendarific.com, dekhopanchang.com and astrosage.com"
+ }
+]

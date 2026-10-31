@@ -1,0 +1,81 @@
+.module-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-01);
+  height: 100%;
+  overflow-y: auto;
+  padding-top: var(--cds-spacing-03);
+  padding-bottom: var(--cds-spacing-04);
+}
+
+/* Transparent until a scroll event; .thin-scroll supplies the geometry, this
+   supplies the visibility, so the track width never changes. */
+.module-sidebar {
+  scrollbar-color: transparent transparent;
+}
+
+.module-sidebar::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.module-sidebar-scrolling {
+  scrollbar-color: var(--reiq-scrollbar-thumb) transparent;
+}
+
+.module-sidebar-scrolling::-webkit-scrollbar-thumb {
+  background: var(--reiq-scrollbar-thumb);
+}
+
+.module-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-03);
+  /* Row height (2.25rem) FALLS OUT of this padding plus body-01's line height.
+     Do not re-assert a min-height - that is how the collapsed and expanded
+     rows previously drifted apart. */
+  padding: var(--cds-spacing-03) var(--cds-spacing-06);
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-secondary);
+  text-decoration: none;
+}
+
+/* The icon never shrinks: a long label is cut with an ellipsis instead, so every row's icon is
+   the same 16px. */
+.module-sidebar-link svg {
+  flex: none;
+}
+
+.module-sidebar-link:hover {
+  background: var(--reiq-layer-hover);
+}
+
+.module-sidebar-link-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-sidebar-link-active {
+  background: var(--reiq-layer-01);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+}
+
+.module-sidebar-link-active svg {
+  color: var(--reiq-interactive-01);
+}
+
+.module-sidebar-link-collapsed {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* The rail's own footer note. Pushed to the bottom so it never floats mid-rail
+   on a short list. */
+.module-sidebar-foot {
+  margin-top: auto;
+  padding: var(--cds-spacing-05) var(--cds-spacing-06) 0;
+}

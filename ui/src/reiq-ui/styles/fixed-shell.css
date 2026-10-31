@@ -1,0 +1,10 @@
+/* For apps with a fixed desktop shell: the page never scrolls, only the
+   shell's content pane does. Mobile keeps whole-page scroll. 672px literal:
+   var() does not evaluate inside a media query. Auth does not load this -
+   its pages are a single column that scrolls like any page. */
+@media (min-width: 672px) {
+  html,
+  body {
+    overflow: hidden;
+  }
+}

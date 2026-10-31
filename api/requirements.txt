@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pandas
+openpyxl
+pyarrow
+scikit-learn
+lightgbm
+pydantic-settings
+python-multipart

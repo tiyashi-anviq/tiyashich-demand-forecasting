@@ -1,0 +1,17 @@
+/* Carbon caps a notification at a max-width sized for a toast; inline in a page
+   column it should take the column it is in. */
+.notification-fill {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* The engine's own words, kept verbatim and set in mono so a stack-ish string
+   does not read as prose. */
+.notification-raw-detail {
+  margin: var(--cds-spacing-03) 0 0;
+  font-family: var(--reiq-font-mono);
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--reiq-text-secondary);
+  overflow-wrap: anywhere;
+}

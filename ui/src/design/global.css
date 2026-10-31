@@ -1,0 +1,147 @@
+/* This app's own content primitives. Cards, stat tiles, stacks and every focus, scroll and motion rule come from
+   @reiq/ui. Colours are --reiq-* only, spacing and type --cds-* only. */
+
+/* Emphasis is semibold at most, whichever tag a screen used for it. */
+.module-shell-content :is(b, strong) { font-weight: var(--reiq-weight-semibold); }
+
+/* A card's grid: columns at least 24rem wide, so a row of two reflows on its own with no media query. */
+.grid { display: grid; gap: var(--cds-spacing-05); grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); }
+.grid > * { min-width: 0; }
+.span-all { grid-column: 1 / -1; }
+
+/* A card's title with its one-line description under it. */
+.card-heading { display: flex; flex-direction: column; gap: var(--cds-spacing-01); }
+.card-title-row { display: inline-flex; align-items: center; }
+.card-heading .footnote { font-weight: var(--reiq-weight-regular); }
+
+/* A change: sign and arrow say the direction, colour only echoes it. */
+.delta { display: inline-flex; align-items: center; gap: var(--cds-spacing-02); }
+.delta.up { color: var(--reiq-success-strong); }
+.delta.down { color: var(--reiq-error-strong); }
+
+/* Skeletons keep the loaded layout's boxes. */
+.skeleton-tile { inline-size: 100%; block-size: var(--cds-spacing-10); }
+.skeleton-chart { inline-size: 100%; block-size: var(--reiq-size-chart-card-body); }
+
+/* The focused page shell: one column, no side rail. */
+.settings-column { max-inline-size: 64rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--cds-spacing-06); }
+
+/* ---- the data setup wizard ---- */
+.wizard-footer { position: sticky; inset-block-end: 0; z-index: 2; display: flex; align-items: center; gap: var(--cds-spacing-05); padding: var(--cds-spacing-05); background: var(--reiq-ui-background); border-block-start: 1px solid var(--reiq-border-subtle); }
+.wizard-footer-note { flex: 1; min-inline-size: 0; color: var(--reiq-text-secondary); font-size: var(--cds-body-01-font-size); line-height: var(--cds-body-01-line-height); }
+.wizard-footer-note b { color: var(--reiq-text-primary); }
+.wizard-working { max-inline-size: 32rem; display: flex; flex-direction: column; gap: var(--cds-spacing-04); }
+.source-grid { display: grid; gap: var(--cds-spacing-04); grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+.source-grid .card { min-block-size: var(--cds-spacing-12); }
+.issue-fix { min-inline-size: 16rem; }
+.mapping-field { display: flex; flex-direction: column; gap: var(--cds-spacing-02); margin-block-end: var(--cds-spacing-05); }
+.mapping-sample { overflow: auto; border: 1px solid var(--reiq-border-subtle); }
+
+/* ---- the why card on a forecast month ---- */
+.why-compare { display: grid; gap: var(--cds-spacing-05); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.why-compare > div { display: flex; flex-direction: column; gap: var(--cds-spacing-02); }
+.why-short { padding: var(--cds-spacing-04) var(--cds-spacing-05); border-inline-start: var(--cds-spacing-02) solid var(--reiq-interactive-01); background: var(--reiq-layer-01); }
+.why-short p { margin: 0; }
+.why-facts { margin: 0; padding-inline-start: var(--cds-spacing-06); list-style: disc; display: flex; flex-direction: column; gap: var(--cds-spacing-02); }
+
+/* ---- the filters row in the page header ---- */
+.filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--cds-spacing-05); }
+.filter-bar > * { min-inline-size: 12rem; flex: 0 1 14rem; }
+.filter-bar > .cds--btn { flex: 0 0 auto; min-inline-size: 0; }
+
+/* An open filter menu belongs to the page header, which sits at the same stacking level (200) as the tab row
+   below it, and the tab row is later in the page so it painted over the menu. The header goes one step above
+   the tabs (still under the page bar at 300) so menus open on top of them. */
+.module-page-header-sticky { z-index: 210; }
+/* The header on these pages is not the sticky kind, so it had no stacking level at all and the tab row (200) painted over
+   its open menus. Give the plain header a level above the tabs as well. */
+.module-page-header:not([class*="sticky"]) { position: relative; z-index: 210; }
+
+.table-scroll .row-03 { flex-wrap: nowrap; }
+
+/* A switch placed in a chart card's toolbar is as wide as its words, not the whole card. */
+.card > .row-03 { align-items: center; }
+.card > .row-03 > .cds--content-switcher { flex: none; inline-size: max-content; max-inline-size: 100%; }
+.card > .row-03 > .cds--content-switcher .cds--content-switcher-btn { flex: none; inline-size: auto; }
+
+/* Once the tab row is pinned, content scrolls under it: give it a little room and a hairline so cards do not butt against the tabs. */
+.module-shell-content .tabs-sticky[data-pinned] {
+  padding-block-end: var(--cds-spacing-03);
+  border-block-end: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+/* The tab row is white across the whole page while the page behind it is tinted, so it reads as a stray white bar beside the tabs.
+   Unpinned, let the page tint show through; once pinned under the page bar it goes back to solid so content does not show through it. */
+.module-shell-content .tabs-sticky:not([data-pinned]) { background: transparent; }
+
+/* Same fix with enough weight to beat the component's own z-index (200), which was winning on source order. */
+.module-shell-content .module-page-header.module-page-header-sticky,
+.module-shell-content .module-page-header:not([class*="sticky"]) { z-index: 210; }
+
+/* The month and week pickers in a chart card's toolbar were squeezed so far that "Oct 2025" read "Oct 2...". Give them room for their labels. */
+.card > .row-03 .cds--dropdown__wrapper,
+.card > .row-03 .cds--list-box__wrapper { flex: none; inline-size: 12rem; min-inline-size: 12rem; }
+.card > .row-03 .cds--dropdown { inline-size: 100%; min-inline-size: 12rem; }
+
+/* run picker: legend swatches that take the chart series colours */
+.legend-item { display: inline-flex; align-items: center; min-block-size: 2rem; }
+.swatch { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; margin-inline-end: 0.5rem; }
+.swatch-1 { background: var(--reiq-chart-1); }
+.swatch-2 { background: var(--reiq-chart-2); }
+.swatch-8 { background: var(--reiq-chart-8); }
+
+/* the role, month, region and unit pickers on the challenge page: as wide as their words, wrapping when the screen is narrow */
+.challenge-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--cds-spacing-05, 1rem); }
+.challenge-bar .cds--content-switcher { inline-size: max-content; max-inline-size: 100%; }
+.challenge-bar .cds--content-switcher .cds--content-switcher-btn { flex: none; inline-size: auto; }
+.challenge-bar .cds--dropdown__wrapper, .challenge-bar .cds--list-box__wrapper { inline-size: 14rem; }
+
+/* Only the tab row stays pinned while scrolling; the title and filters scroll away with the page instead of taking a third of the screen. */
+.module-shell-content .module-page-header.module-page-header-sticky { position: relative; top: auto; }
+.module-shell-content .tabbed-view-row.tabs-sticky { top: calc(var(--cds-spacing-10) - var(--cds-spacing-03)); }
+
+/* run view legend: each swatch repeats the line's colour and pattern */
+.line-swatch { display: inline-block; inline-size: 1.75rem; margin-inline-end: 0.5rem; border-block-start: 3px solid var(--reiq-chart-1); }
+.line-swatch.dash { border-block-start-style: dashed; }
+.line-swatch.dot { border-block-start-style: dotted; }
+.line-swatch.dots { inline-size: 0.75rem; block-size: 0.75rem; border: 0; border-radius: 0; background: var(--reiq-chart-1); }
+.line-swatch.tone-1 { border-color: var(--reiq-chart-1); } .line-swatch.dots.tone-1 { background: var(--reiq-chart-1); }
+.line-swatch.tone-2 { border-color: var(--reiq-chart-2); } .line-swatch.dots.tone-2 { background: var(--reiq-chart-2); }
+.line-swatch.tone-3 { border-color: var(--reiq-chart-3); } .line-swatch.dots.tone-3 { background: var(--reiq-chart-3); }
+.line-swatch.tone-4 { border-color: var(--reiq-chart-4); } .line-swatch.dots.tone-4 { background: var(--reiq-chart-4); }
+.line-swatch.tone-5 { border-color: var(--reiq-chart-5); } .line-swatch.dots.tone-5 { background: var(--reiq-chart-5); }
+.line-swatch.tone-6 { border-color: var(--reiq-chart-6); } .line-swatch.dots.tone-6 { background: var(--reiq-chart-6); }
+.line-swatch.off { opacity: 0.35; }
+
+/* findings: span the full width of the cards above, and breathe */
+.stack-03 > .cds--inline-notification { max-inline-size: none; inline-size: 100%; }
+.cds--inline-notification.cds--inline-notification--low-contrast { max-inline-size: none; }
+.cds--inline-notification__subtitle { line-height: 1.5; }
+
+/* the "i" beside a term */
+.info-tip { display: inline-flex; vertical-align: middle; margin-inline-start: var(--cds-spacing-02); }
+.info-tip .cds--toggletip-content { text-transform: none; letter-spacing: normal; font-weight: var(--reiq-weight-regular, 400); font-size: var(--cds-body-compact-01-font-size, 0.875rem); line-height: 1.43; text-align: start; white-space: normal; max-inline-size: min(20rem, calc(100vw - 2rem)); inline-size: max-content; }
+.info-tip .cds--toggletip-content p { text-transform: none; letter-spacing: normal; }
+.info-tip .cds--toggletip-button { inline-size: 1.25rem; block-size: 1.25rem; }
+
+
+/* a row of dropdown filters above a table card */
+.filter-row .cds--dropdown__wrapper,
+.filter-row .cds--list-box__wrapper { flex: none; inline-size: 14rem; min-inline-size: 14rem; }
+.filter-row .cds--dropdown { inline-size: 100%; min-inline-size: 14rem; }
+
+/* column header with an "i": the sort button and the explanation sit side by side */
+.th-flex { display: inline-flex; align-items: center; gap: 0.25rem; }
+.cell-num .th-flex { justify-content: flex-end; }
+.th-sort { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-align: inherit; cursor: pointer; }
+.th-sort:focus-visible { outline: 2px solid var(--cds-focus, #0f62fe); outline-offset: 2px; }
+.th-unsorted { opacity: 0.45; }
+th.th-active { background: var(--cds-layer-active, #cfd2cf); }
+
+/* a table card folded to its title; the whole card opens it */
+.card { position: relative; }
+.dc-toggle { position: absolute; inset-block-start: 1rem; inset-inline-end: 1rem; z-index: 1; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; border: 1px solid var(--cds-border-strong, #8d8d8d); background: transparent; color: inherit; font: inherit; font-size: 0.875rem; cursor: pointer; }
+.dc-toggle:hover { background: var(--cds-layer-hover, rgba(0,0,0,0.06)); }
+.dc-toggle:focus-visible { outline: 2px solid var(--cds-focus, #0f62fe); outline-offset: 2px; }
+.dc-folded { cursor: pointer; }
+.dc-folded:hover { background: var(--cds-layer-hover, rgba(0,0,0,0.03)); }

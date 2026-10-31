@@ -1,0 +1,36 @@
+/* Single line brand block: AnvIQ's mark + this module's own name, matching reiq's own
+   AppTopBar.css brand block exactly. flex: 0 1 auto + min-width: 0 lets it shrink before the
+   right-hand utilities are pushed off-screen. */
+.app-top-bar-brand {
+  display: flex;
+  /* baseline, not center: centering the AnvIQ mark's box against the name's own LINE box (which
+     carries line-height padding above/below the glyphs) put the mark's optical middle a few
+     pixels off the text's actual baseline. A browser reads an <img>'s baseline as its own bottom
+     edge, so this lines the mark's bottom up with the text's baseline instead. */
+  align-items: baseline;
+  gap: var(--cds-spacing-02);
+  flex: 0 1 auto;
+  width: calc(var(--reiq-size-sidebar) - var(--reiq-size-topbar));
+  min-width: 0;
+  box-sizing: border-box;
+  color: var(--reiq-text-primary);
+  text-decoration: none;
+}
+
+/* The mark shrinks before it clips - flex-shrink is the default 1, and its own width: auto keeps
+   the SVG's aspect ratio as the flex box narrows. */
+.app-top-bar-brand-mark {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Carbon's own convention, and the guide's: semibold, primary. */
+.app-top-bar-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  letter-spacing: var(--reiq-letter-spacing-caps);
+}

@@ -1,0 +1,21 @@
+/** Plain-language explanations for the "i" buttons. One place, so a term reads the same on every screen. */
+export const G = {
+  wape: 'WAPE is the total miss divided by the total units ordered: add up how far each forecast was from what happened, then divide by what happened. Accuracy is 100% minus WAPE. Lower WAPE is better.',
+  accuracy: 'Accuracy is 100% minus WAPE. WAPE is the sum of the misses divided by the units ordered, so a bigger miss lowers the accuracy.',
+  under: 'Demand the forecast did not cover, as a share of the units ordered. This is the lost-sales risk. It is shown apart from over-forecast and never netted against it.',
+  over: 'Forecast above what was ordered, as a share of the units ordered. This is stock piling up, with the cash it ties up. A very high over-forecast can also mean sales are being missed elsewhere.',
+  bias: 'Net bias is over-forecast minus under-forecast. A positive figure means the forecast ran high on balance, a negative one that it ran low.',
+  p50: 'The forecast moved by its usual past miss, so half of the past months landed above it and half below. It is built from the same months it is drawn against, so it describes this period and does not predict the next.',
+  horizon: 'M3 is the forecast made three months before the month it covers, M2 two months and M1 one month. Each was made with only the data that existed then, so it is a fair test.',
+  industry: 'The industry range is about 80% at M3 rising to about 90% at M1. Eveready\'s own M3 is about 68% today, from the CFO workbook.',
+  otif: 'On time and in full. A delivery counts only if it arrives by the promised date and in the full quantity ordered. One late or short delivery fails the whole line.',
+  fallback: 'The second vendor in the sourcing map, who takes over when the first fails. It usually charges a price premium and needs its lead time before the first delivery.',
+  cover: 'Days of cover is the stock on hand divided by the daily use: how many days it would last if nothing arrived.',
+  utilisation: 'The share of a production line\'s rated capacity that it actually runs at. Running a line harder wins back lost output, but it cannot go above 100%.',
+  moq: 'Minimum order quantity: the smallest amount a supplier will sell in one order. A need below it still has to be ordered at the minimum.',
+  buffer: 'Units a request carries above both the plant\'s need and the minimum order. Supply chain adds it as a safety margin. It has a holding cost and is the part that can be cut.',
+  need: 'The units the plant must buy to reach its target stock cover, from the demand forecast through the bill of materials.',
+  holding: 'Holding cost is the units\' value times the yearly holding rate, for the days it takes to use them up. It is an estimate.',
+  weekly: 'Weekly accuracy is 100% minus the weekly WAPE, scored on weeks the model had not seen.',
+  est: 'Est. means the figure is worked out from assumptions and inputs. It is not an actual.',
+}

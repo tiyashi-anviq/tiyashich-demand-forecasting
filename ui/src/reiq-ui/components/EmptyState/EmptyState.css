@@ -1,0 +1,64 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--cds-spacing-02);
+  min-height: 40vh;
+  padding: var(--cds-spacing-07);
+}
+
+/* A shorter variant for an absence inside a card, where 40vh would push the
+   card taller than everything beside it. */
+.empty-state-inline {
+  min-height: 0;
+  padding: var(--cds-spacing-06) var(--cds-spacing-05);
+}
+
+.empty-state-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cds-spacing-09);
+  height: var(--cds-spacing-09);
+  margin-bottom: var(--cds-spacing-03);
+  border-radius: 0;
+}
+
+.empty-state-badge-brand {
+  background: var(--reiq-tag-background-brand);
+  color: var(--reiq-interactive-01);
+}
+
+/* A PAIRED status hue, never --reiq-error-strong on a tinted ground: that token
+   is fill-only and the pair is what is contrast-checked in both themes. */
+.empty-state-badge-danger {
+  background: var(--reiq-status-red-bg);
+  color: var(--reiq-status-red-fg);
+}
+
+.empty-state-title {
+  margin: 0;
+  font-size: var(--cds-heading-03-font-size);
+  line-height: var(--cds-heading-03-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+}
+
+.empty-state-message {
+  margin: 0;
+  max-width: 26rem;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-secondary);
+}
+
+.empty-state-action {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--cds-spacing-03);
+  max-width: 32rem;
+  margin-top: var(--cds-spacing-04);
+}

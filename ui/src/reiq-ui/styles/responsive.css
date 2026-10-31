@@ -1,0 +1,586 @@
+/* THE canonical responsive layer for every module page.
+ *
+ * Every module page is built from the same handful of shared structural pieces -
+ * ModulePageHeader (eyebrow/breadcrumb/title/actions), ModuleShell's rail
+ * (or product-mix's own equivalent), ModuleSidebar's links. This file is the
+ * ONE place their behaviour below the app's one breakpoint (--reiq-breakpoint-md,
+ * 672px - literal here because var() cannot evaluate inside a media query;
+ * `layout.breakpoint.md` from $brand/tokens for any JS-side matchMedia) is
+ * decided, instead of each module's own layout CSS carrying its own copy that
+ * can silently drift from the others - that drift is exactly how product-mix's
+ * mobile shell shipped a phantom empty box above its content (a missing
+ * `flex: none` its sibling modules' copy of this rule already had).
+ *
+ * Every declaration below is !important, and that is load-bearing, not
+ * decoration: every page component in this app is route-level
+ * `React.lazy(() => import(...))`, so a page's own CSS (ModulePageHeader.css,
+ * a page's own stylesheet, simulation.css, ...) is fetched and its <style>
+ * injected ASYNCHRONOUSLY, after the route resolves - which is AFTER this
+ * file's own synchronous import in main.tsx finishes, no matter how late in
+ * main.tsx this import is written. Source order genuinely cannot decide the
+ * cascade here: a plain override in this file loses to a same-specificity
+ * declaration in a lazy-loaded page's CSS every time, silently, because that
+ * page's stylesheet always ends up LATER in the document regardless of
+ * import order. This is the same reason simulation.css's own selected-state
+ * override uses !important against Carbon's same-specificity rule - same
+ * problem, same fix, applied consistently here for every rule in this file
+ * rather than only where a component happened to also set the property.
+ * (Still import this file after a module's own theme/global.css - that part
+ * of the ordering IS synchronous and reliable - !important is what covers
+ * the part that isn't.)
+ *
+ * It does not invent new classes: every selector below is a class
+ * ModulePageHeader, ModuleShell, ModuleSidebar, ModuleNavDrawer or
+ * product-mix's own shell already renders, everywhere in the app - so this
+ * file is safe to drop into every module unchanged, including ones (hub,
+ * auth) that only render a subset of these pieces. A rule with no matching
+ * element on a given page is simply a no-op there.
+ *
+ * Nothing here introduces a token, a literal color, or a control height Carbon
+ * doesn't already own - the brand-kit rules section 2A explicitly forbids overriding a
+ * Carbon component's own height via a :global(.cds--*) selector, so the
+ * button rule below resizes the WRAPPER around a Button, never the button
+ * itself. */
+
+/* ============================================================
+   1. Page header - eyebrow, breadcrumb, title, action buttons
+   ============================================================ */
+
+@media (max-width: 671px) {
+  /* A sticky sub-header pins to the viewport at mobile, not to a scrolling
+     content pane that no longer exists (mobile is whole-page scroll) - it
+     would float at a negative offset under the fixed top bar instead of
+     scrolling away with the rest of the page. Mirrors the mobile block
+     ModulePageHeader.css already carries for this same reason; kept here too
+     so a module that forgets its own copy still gets the correct behaviour. */
+  .module-page-header-sticky {
+    position: static !important;
+  }
+
+  /* A page reached via a "Back to X" link (e.g. a parameter detail page) puts
+     that link and the breadcrumb side by side, each getting roughly half the
+     header's width - `.module-page-header-crumb-row` is `display: flex` with
+     no wrap of its own. At 375px that squeezes a 3-4 segment breadcrumb into
+     a column barely wider than one word, wrapping every segment onto its own
+     line. Stacked instead, each gets the row's full width and reads as two
+     short lines rather than a ladder of one-word ones. align-items:
+     flex-start, not the default center a page's own CSS sets: a row holding
+     just one child (the mobile back-link) still needs to be LEFT-aligned,
+     not centered, and cross-axis alignment on a column flex is exactly what
+     centered it before this was !important. */
+  .module-page-header-crumb-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--cds-spacing-02) !important;
+  }
+
+  /* heading-05 is the right call at desktop width, where the header has an
+     ~7-column runway; on a 375px viewport it routinely wraps to two lines
+     before any real content is visible, taxing exactly the vertical space a
+     small screen has least of. Stepping down to heading-03 - still one of
+     the five sanctioned type steps (the brand-kit rules 2A.7), not a sixth invented
+     for mobile - keeps the title one line for the vast majority of module
+     page titles in this app and reads as "compact", not "demoted". */
+  .module-page-title {
+    font-size: var(--cds-heading-03-font-size) !important;
+    line-height: var(--cds-heading-03-line-height) !important;
+    /* Truncates rather than fighting the action buttons for room - every
+       header action is a compact 48px icon-only square now (see below), so
+       the title keeps the row instead of being pushed to a line of its own;
+       min-width: 0 is what lets a flex item shrink below its text's natural
+       width at all. */
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* body-01 -> label-01: the page description sentence under the title.
+     body-01 is already the smallest of the two "body" steps, so there is
+     nowhere further down to step except the scale's other floor - still one
+     of the five sanctioned steps, not a sixth invented for mobile. Two full
+     sentences at body-01 read as noticeably heavier than the title above
+     them on a 375px screen; label-01 keeps it legible while reading as
+     supporting text, the same relationship it has to the title at desktop
+     width. */
+  .module-page-subtitle {
+    font-size: var(--cds-label-01-font-size) !important;
+    line-height: var(--cds-label-01-line-height) !important;
+  }
+
+  /* Title left, actions right, ONE row - unchanged from desktop. This used
+     to stack onto two rows because the action buttons were full-width text
+     buttons that would otherwise fight the title for horizontal space; now
+     every header action is a compact 48px icon-only square (hasIconOnly,
+     driven by useIsMobile()), so there is always room to keep them beside
+     the title instead of stacking, which read as disconnected - a title
+     with its action floating on an otherwise-empty line below it. */
+  .app-title-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--cds-spacing-03) !important;
+  }
+
+  /* Right-aligned, never wrapped: two or three 48px icon buttons in a row
+     still fit comfortably beside a truncating title at 375px. */
+  .module-page-header-actions {
+    flex: none !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+  }
+
+  /* No per-Button width override here any more: every header action Button is
+     icon-only below this breakpoint now (hasIconOnly, driven by useIsMobile()),
+     and Carbon sizes an icon-only button's width via the LOGICAL `inline-size`
+     property, not `width` - a `width: auto !important` override here doesn't
+     just fail to help, it actively WINS over Carbon's own inline-size for the
+     same physical dimension (same writing-mode-relative box), collapsing the
+     button to its bare content box (~18px) while its `block-size` (height,
+     left alone) stays at the button's real 48px - a tall, skinny rectangle
+     instead of the square icon button Carbon already renders correctly on its
+     own. Nothing in this row needs a width rule any more; flex items don't
+     stretch by default, so a plain text Button (e.g. WhatIfAnalysisPage's
+     "Save simulation", never converted to icon-only) already sizes to its
+     own content without one. */
+
+  /* An explicit backHref (e.g. a parameter detail page) reads the same shape
+     on mobile as on desktop - just its own row now that the crumb-row above
+     stacks - so a long backLabel still ellipsizes on one line instead of
+     wrapping or overflowing, since the row is otherwise `display: flex` with
+     no shrink/wrap of its own. */
+  .module-page-header-back {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .module-page-header-back span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+  }
+
+  /* The breadcrumb keeps the SAME full chain as desktop (index.tsx passes
+     Carbon's own size="sm" prop for smaller text, not a different shape) -
+     this is what keeps it readable on one line at that smaller size instead
+     of wrapping like text, which is Carbon's own default below ITS
+     breakpoint: `ol.cds--breadcrumb` is `display: inline` until Carbon's own
+     `md` breakpoint, so without this override a 3-4 segment chain wraps each
+     item onto its own line the moment it does not fit, growing the sticky
+     header's height on every navigation instead of just shrinking the text
+     that no longer fits. */
+  /* width: 100%, not just min-width: 0 - `.module-page-header-crumb-row`'s own
+     align-items: flex-start (above, for left-aligning a lone back-link) also
+     means a flex child is sized to its OWN content instead of being
+     stretched to the row's width, for every child, this one included. Without
+     an explicit width the breadcrumb nav never had a real boundary to shrink
+     against, so the current item's flex-shrink had nothing to shrink INTO
+     and never activated - the chain simply overflowed until something further
+     up the tree (`.module-shell-content`'s own overflow-x: hidden) clipped it
+     mid-word with no ellipsis, which is the bug this fixes. */
+  .module-page-header-breadcrumb {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .module-page-header-breadcrumb .cds--breadcrumb {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
+  }
+
+  /* min-width: 0 on the ITEM (a flex container - Carbon's own
+     .cds--breadcrumb-item is unconditionally display:flex, for the icon+text
+     hub crumb), never overflow/ellipsis on it directly: text-overflow only
+     truncates the overflow of INLINE content in a plain block/inline-block
+     box, and applying it to a flex container instead produced exactly the
+     bug this replaces - the first character or two of "All modules" and the
+     module name silently disappearing (clipped by the flex layout
+     recalculating under a hard-cut overflow, not a real ellipsis) rather
+     than a trailing "...". The truncation itself belongs on the item's own
+     DIRECT CHILD instead (the Link/anchor Carbon renders for a linked crumb,
+     or its Text span for the current, unlinked one) - a real inline-block
+     text box, where text-overflow behaves exactly as documented. Carbon's
+     own "/" separator is a ::after PSEUDO-element on the .cds--breadcrumb-item,
+     never matched by `> *`, so it is untouched by this and keeps its normal
+     spacing. */
+  .module-page-header-breadcrumb .cds--breadcrumb-item {
+    min-width: 0 !important;
+  }
+
+  .module-page-header-breadcrumb .cds--breadcrumb-item > * {
+    display: inline-block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    vertical-align: bottom !important;
+  }
+
+  /* The current page is the one segment that answers "where am I" (a plot
+     number, a simulation name) and the one most likely to actually be long -
+     "All modules" and a module's own name are short and fixed, so they keep
+     their natural size instead of competing for a share of the row; the
+     current item is the only one that SHRINKS, absorbing whatever room the
+     fixed segments before it do not need. */
+  .module-page-header-breadcrumb .cds--breadcrumb-item:not(.cds--breadcrumb-item--current) {
+    flex: none !important;
+  }
+
+  .module-page-header-breadcrumb .cds--breadcrumb-item--current {
+    flex: 1 1 auto !important;
+    min-width: 3rem !important;
+  }
+}
+
+/* ============================================================
+   2. Module shell rail - ModuleShell.tsx (land-feasibility,
+      demand-forecasting, demand-forecasting-manufacturing,
+      title-search)
+   ============================================================ */
+
+@media (max-width: 671px) {
+  /* Mobile no longer renders `.module-shell-rail` at all - ModuleShell
+     swaps it for a `ModuleNavDrawer` overlay below this breakpoint (see
+     ModuleShell.tsx), so there is nothing left in `.module-shell-body` to
+     stack. The only rule still needed here is the content pane's own
+     padding, since it no longer shares the row with a rail sibling. */
+  .module-shell-content {
+    max-height: none !important;
+    overflow-y: visible !important;
+    padding-left: var(--cds-spacing-05) !important;
+    padding-right: var(--cds-spacing-05) !important;
+  }
+}
+
+/* ============================================================
+   4. Typography - section/card/tile headings and KPI-style
+      values that sit outside ModulePageHeader's own title
+      (section 1 above already handles that one). One step down
+      the five-token scale (the brand-kit rules 2A.7): heading-05 to
+      heading-03, heading-03 to body-02, and body-02 headings
+      (never data values already this small) to body-01. Kept
+      here rather than in each component's own CSS so every
+      module's copy of this file stays the single place mobile
+      type steps are decided - a selector with no match on a
+      given module's page is simply a no-op, same as section 2/3
+      above are for a module without that shell shape.
+   ============================================================ */
+
+@media (max-width: 671px) {
+  /* heading-05 -> heading-03: the "one deliberately large number" hero
+     values, oversized once a card is a single mobile column rather than one
+     of several across a wide grid. */
+  .score-gauge-hero .score-gauge-value,
+  .wi-preview-summary-value,
+  .wi-sim-card-score,
+  .cf-gauge-value,
+  .lf-calc-result-value,
+  .dfm-kpi-value,
+  .dfm-reconciliation-stat-value {
+    font-size: var(--cds-heading-03-font-size) !important;
+    line-height: var(--cds-heading-03-line-height) !important;
+  }
+
+  /* heading-03 -> body-02: section/card/tile headings and compact KPI
+     values. .module-tile-name, not .module-tile-title - that class was never
+     hub's real one (ModuleTile.css's own selector is -name), so this rule had
+     been a silent no-op since it was written. */
+  .module-tile-name,
+  .auth-card-title,
+  .auth-layout-brand-name,
+  .score-gauge-value,
+  .wi-stat-card-value,
+  .wi-preview-summary-baseline,
+  .lf-rail-title,
+  .cmp-section-title,
+  .lf-locations-preview-name,
+  .lf-kpi-value,
+  .lf-drawer-title,
+  .empty-state-title,
+  .demand-forecast-chart-title,
+  .demand-forecast-stat-value,
+  .dfm-batch-modal-estimate-value,
+  .dfm-drawer-title,
+  .pmf-stat-value,
+  .pmf-donut-number,
+  .pmf-filter-title,
+  .title-search-detail-title,
+  .title-search-detail-fact-value,
+  /* Carbon's own DataTable - its header TITLE (not the column headers,
+     which use heading-compact-01, handled in Section 6 below) uses
+     heading-03 directly (@carbon/styles/scss/components/data-table/
+     _data-table.scss), one of our own 5 sanctioned tokens, so it needs its
+     own selector rather than a global custom-property redefinition - see
+     Section 6's own comment for why. */
+  .cds--data-table-header__title {
+    font-size: var(--cds-body-02-font-size) !important;
+    line-height: var(--cds-body-02-line-height) !important;
+  }
+
+  /* body-02 -> body-01: panel/section headings that were already at the
+     smaller step - a label, not a value, so it can give up more room. Plus a
+     second wave a full audit found still sitting at body-02 unconditionally:
+     the user-menu popover's own identity name (shared, identical UserMenu.css
+     in every module) and a handful of module-specific card/section titles
+     and values. */
+  .lf-overview-panel-title,
+  .cmp-table-heading h2,
+  .fs-section-title,
+  .wi-section-title,
+  .dfm-panel-title,
+  .user-menu-identity-name,
+  .lf-location-card-name,
+  .lf-overview-sim-score-value,
+  .dfm-scenario-drawer-section-title,
+  .dfm-ask-answer,
+  .dfm-pipeline-summary-run,
+  .dfm-pipeline-section-heading {
+    font-size: var(--cds-body-01-font-size) !important;
+    line-height: var(--cds-body-01-line-height) !important;
+  }
+
+  /* body-01 -> label-01: the scale's floor, so nothing shrinks further after
+     this. This is the bulk of a full audit's findings - the great majority
+     of this app's card titles, table cells, drawer subtitles, form/filter
+     labels, hint and caption text were still rendering at body-01 (14px)
+     unconditionally on a 375px viewport, never covered by any mobile rule
+     until now. Shared component selectors first (identical UserMenu.css,
+     AppTopBar.css, ModuleSidebar.css, EmptyState.css, ModulePageHeader.css
+     in every module), then every module's own selectors the audit found -
+     this is a mechanical bulk pass applying the SAME one-step-down rule
+     uniformly, not a per-selector design judgement call, so nothing here is
+     cherry-picked. */
+  .user-menu-avatar-lg,
+  .user-menu-name,
+  .user-menu-item,
+  .app-top-bar-brand-name,
+  .module-sidebar-link,
+  .module-page-header-back,
+  .empty-state-message,
+  /* land-feasibility */
+  .lf-radius-heading,
+  .lf-drawer-subtitle,
+  .cmp-card-title,
+  .cmp-card-name,
+  .cmp-card-link,
+  .cmp-add-card-title,
+  .cmp-count-row,
+  .cmp-hint,
+  .cmp-modal-hint,
+  .cmp-unavailable-title,
+  .cmp-score-card-header,
+  .cmp-table-heading p,
+  .cf-column-name,
+  .cf-column-placeholder,
+  .cf-panel-title,
+  .cf-score-caption,
+  .cf-impact-scores,
+  .cf-change-log-primary,
+  .cf-about-text,
+  .cf-subheading,
+  .cf-preview-row,
+  .cf-data-picker-new,
+  .lf-location-card-coords,
+  .lf-location-card-score-row,
+  .lf-location-form-site-name,
+  .lf-rail-clear,
+  .lf-rail-section-title,
+  .lf-nearest-subtitle,
+  .lf-details-title,
+  .lf-insights-title,
+  .lf-insights-text,
+  .lf-calc-breakdown-row,
+  .lf-calc-total-row,
+  .lf-calc-empty p,
+  .reco-plot-rank,
+  .reco-plot-title,
+  .reco-plot-score-badge,
+  .reco-plot-fact-value,
+  .reco-plot-court-cases,
+  .grade-pill-md,
+  .fs-hero-category-name,
+  .fs-hero-category-score,
+  .fs-accordion-title-name,
+  .fs-accordion-title-score,
+  .fs-contrib-label,
+  .fs-about-text,
+  .fs-modal-intro,
+  .fs-modal-table td,
+  .wi-stat-card-label,
+  .wi-stat-card-max,
+  .wi-gauge-delta,
+  .wi-category-impact-name,
+  .wi-contributor-heading,
+  .wi-contributor-table-row,
+  .wi-change-log-primary,
+  .wi-about-text,
+  .wi-modal-intro,
+  .wi-modal-table td,
+  .wi-controls-subheading,
+  .wi-scoring-mode-label,
+  .wi-weight-health-label,
+  .wi-weight-global-total-row,
+  .wi-sim-card-name,
+  .wi-sim-add-card-title,
+  .wi-sim-row-score,
+  .wi-sim-row-name,
+  .wi-sim-add-row,
+  .lf-sidebar-site-name,
+  .lf-overview-panel-empty-title,
+  /* demand-forecasting */
+  .demand-forecast-insight-title,
+  .demand-forecast-insight-body,
+  .demand-forecast-stat-range,
+  .demand-forecast-stat-muted,
+  .demand-forecast-chart-caption,
+  /* demand-forecasting-manufacturing */
+  .dfm-pd-node-title,
+  .dfm-forecast-spine .cds--progress-label,
+  .dfm-batch-modal-intro,
+  .dfm-lever-label,
+  .dfm-scenario-preset-name,
+  .dfm-version-label,
+  .dfm-version-summary,
+  .dfm-drawer-subtitle,
+  .dfm-term-info-toggletip .cds--toggletip-content p,
+  /* product-mix */
+  .pmf-card-title,
+  .pmf-filter-reset-all,
+  .pmf-filter-section-title,
+  .pmf-filter-field-label,
+  /* title-search */
+  .title-search-feasibility-form-hint,
+  .title-search-geo-cell-name,
+  .title-search-location-hint,
+  .title-search-location-reset,
+  .title-search-location-label-name,
+  .title-search-location-label-unnamed,
+  .title-search-location-label-empty,
+  .title-search-location-map-empty-overlay p,
+  .map-layer-trigger,
+  .map-layer-item,
+  .title-search-detail-location,
+  /* hub */
+  .module-tile-description,
+  .module-coming-soon-name,
+  .module-coming-soon-desc,
+  /* auth */
+  .auth-card-description,
+  .auth-form-row,
+  /* Carbon's own Accordion - its title and body <p> both use body-01
+     directly (@carbon/styles/scss/components/accordion/_accordion.scss),
+     one of our own 5 sanctioned tokens, so it needs an explicit selector
+     here rather than a global custom-property redefinition (see Section 6's
+     own comment for why redefining body-01/heading-03 globally would be
+     unsafe - this file's rules borrow their CURRENT value by reference). */
+  .cds--accordion__title,
+  .cds--accordion__content > p,
+  /* Carbon's standard (non-expressive) Button: its own mechanism wasn't
+     conclusively traced to a single type-style() call, and a live check
+     found it computing 16px (body-compact-02's value) - which Section 6
+     below already redefines - but this costs nothing as a defensive
+     backstop if that turns out not to be the actual source. */
+  .cds--btn {
+    font-size: var(--cds-label-01-font-size) !important;
+    line-height: var(--cds-label-01-line-height) !important;
+  }
+}
+
+/* ============================================================
+   5. Modal - bottom sheet on mobile, every `<Modal>` in the app
+      (LocationFormModal, DeleteLocationModal, AddToFeasibilityModal,
+      BatchRunProgressModal, ...). Carbon's own default below its OWN
+      breakpoint is a full-screen panel pinned to the TOP of the
+      viewport (.cds--modal-container: inset-block-start: 0,
+      max-block-size: 100%) - correct for a wizard-length flow, but
+      heavier than this app's forms need, and it reads as a page
+      swap rather than an overlay on top of the page the visitor was
+      just looking at. Anchoring it to the BOTTOM instead - the same
+      overlay shape as ModuleNavDrawer/SettingsDrawer, just docked to
+      the bottom edge instead of a side one - keeps a visible strip of
+      the page behind it, which is what tells a visitor this is a
+      layer over their place in the app, not a new one.
+
+      Carbon's own classes, not a new component: Carbon has no bottom-
+      sheet variant and no prop for one, so this is the only way to
+      get that shape from its Modal - the brand-kit rules 2A.11's "never override
+      a Carbon control's HEIGHT via :global(.cds--*)" is about sm/md/lg
+      form-control sizing specifically, not this (there is no control-
+      height table entry for "dialog position"), and this file already
+      overrides other Carbon classes it has no other hook into
+      (.cds--breadcrumb-item, .cds--content-switcher-btn, .cds--btn).
+
+      Every modal already gets the typography this needs for free:
+      .cds--modal-header__heading is heading-03 and
+      .cds--modal-content/> p is body-01 in Carbon's own SCSS,
+      unconditionally, not just above this breakpoint - the "text
+      reads too large" impression up to now was the full-screen
+      panel's own scale, not the type inside it, and docking it to a
+      compact sheet is what actually fixes that. */
+@media (max-width: 671px) {
+  .cds--modal-container {
+    inset-block-start: auto !important;
+    inset-block-end: 0 !important;
+    max-block-size: 85vh !important;
+    border-bottom: none !important;
+    box-shadow: var(--reiq-shadow-raised) !important;
+  }
+
+  /* Nothing to add for the body itself: Carbon's own .cds--modal-content is
+     already `overflow-y: auto` inside the grid's middle (1fr) row, so it
+     already scrolls within whatever height the container above leaves for
+     it, keeping the header and the (pinned, auto/last grid row) footer's
+     primary action in view above and below the fold either way. */
+}
+
+/* ============================================================
+   6. Typography - Carbon's own component-internal type steps
+      (every TextInput/Select/NumberInput/Search input value, every
+      DatePicker's typed input, Tabs, DataTable's thead/tbody/header
+      description, ContentSwitcher). Section 4 above only ever searched
+      THIS APP's own CSS for font-size declarations - it never touched
+      Carbon's compiled component styles, which is exactly why inputs,
+      tabs and table cells still read full-size on mobile despite
+      Section 4 shrinking every custom class.
+
+      This works via a DIFFERENT mechanism than Section 4: every
+      @carbon/type type-style() call compiles to
+      `font-size: var(--cds-<step>-font-size, <literal-fallback>)` -
+      confirmed by reading @carbon/type's own mixin source - so
+      redefining the CUSTOM PROPERTY ITSELF here is picked up live by
+      every Carbon component that reads it, with no per-component
+      selector needed. !important on :root beats Carbon's own
+      :root[theme='g100'] dark-theme block regardless of the extra
+      attribute-selector specificity, since importance is compared
+      before specificity - one rule covers both themes.
+
+      ONLY the Carbon-internal-only steps belong here (body-compact-01/
+      -02, heading-compact-01, code-02) - never body-01 or heading-03
+      themselves, even though Accordion and DataTable's header title use
+      those two directly (handled instead by adding their selectors to
+      Section 4's existing groups, just above). Section 4's own rules
+      already borrow body-01's/heading-03's CURRENT value by reference
+      (e.g. `.module-page-title` reads --cds-heading-03-font-size to
+      step down FROM heading-05) - redefining those two properties
+      globally would shrink every such rule an extra, unintended step,
+      not just the Carbon components that happen to use them.
+      --cds-helper-text-01-font-size is already 12px (the floor) by
+      Carbon's own default - nothing to redefine there. */
+
+@media (max-width: 671px) {
+  :root {
+    --cds-body-compact-01-font-size: var(--cds-label-01-font-size) !important;
+    --cds-body-compact-01-line-height: var(--cds-label-01-line-height) !important;
+    --cds-body-compact-02-font-size: var(--cds-body-01-font-size) !important;
+    --cds-body-compact-02-line-height: var(--cds-body-01-line-height) !important;
+    --cds-heading-compact-01-font-size: var(--cds-label-01-font-size) !important;
+    --cds-heading-compact-01-line-height: var(--cds-label-01-line-height) !important;
+    --cds-code-02-font-size: var(--cds-label-01-font-size) !important;
+    --cds-code-02-line-height: var(--cds-label-01-line-height) !important;
+  }
+}

@@ -1,0 +1,40 @@
+.page-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-05);
+  min-width: 0;
+}
+
+.page-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-04);
+  min-height: var(--cds-spacing-07);
+}
+
+.page-section-title {
+  margin: 0;
+  margin-right: auto;
+  font-size: var(--cds-heading-03-font-size);
+  line-height: var(--cds-heading-03-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+}
+
+.page-section-aside {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+}
+
+/* Follows the heading, so it must not inherit the section's own gap twice. */
+.page-section-note {
+  margin: calc(-1 * var(--cds-spacing-03)) 0 0;
+  max-width: 44rem;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-secondary);
+}

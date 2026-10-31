@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Demand planning</title>
+    <!-- Pre-paint theme guard: sets the one `theme` attribute before the stylesheet loads, so the page never
+         flashes the wrong theme. Reads the same cookie as the shared ThemeProvider. -->
+    <script>
+      (function () {
+        try {
+          var match = document.cookie.match(/(?:^|; )reiq_theme=([^;]*)/)
+          var stored = match ? decodeURIComponent(match[1]) : null
+          var theme =
+            stored === 'g10' || stored === 'g100'
+              ? stored
+              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'g100'
+                : 'g10'
+          document.documentElement.setAttribute('theme', theme)
+        } catch (e) {
+          document.documentElement.setAttribute('theme', 'g10')
+        }
+      })()
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vend+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

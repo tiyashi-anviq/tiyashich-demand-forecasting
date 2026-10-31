@@ -1,0 +1,63 @@
+/* This module's own content primitives (cards, control rows, segmented buttons, tables, the
+   hand-drawn SVG charts). Everything app-wide - reset, focus ring, scrollbars, pulse-refresh,
+   reduced motion - comes from theme/global.css, shared with every other module. Colors are
+   --reiq-* only; the chart hues are the --reiq-chart-* family in brand/reiq-tokens.css. */
+.module-shell-content { font-size: var(--cds-body-01-font-size); line-height: var(--cds-body-01-line-height); }
+/* A screen's section heading (under the page's own h1): one step, everywhere. */
+.module-shell-content h2 { margin: var(--cds-spacing-02) 0 var(--cds-spacing-03); font-size: var(--cds-heading-03-font-size); line-height: var(--cds-heading-03-line-height); font-weight: var(--reiq-weight-regular); }
+
+/* ---- content primitives used by every screen ---- */
+.grid { display: grid; gap: 12px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 900px) { .g2, .g3, .g4, .g5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .g2, .g3, .g4, .g5 { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--reiq-layer-01); border: 1px solid var(--reiq-border-subtle); padding: 14px; min-width: 0; position: relative; }
+.card h3 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+.card + .card, .grid + .card, .card + .grid, .ctl + .card { margin-top: 12px; }
+.grid > .card { margin-top: 0; }
+.note { color: var(--reiq-text-helper); font-size: 12px; margin: 2px 0 8px; }
+.muted { color: var(--reiq-text-helper); } .small { font-size: 12px; }
+.pos { color: var(--reiq-success-strong); } .neg { color: var(--reiq-error-strong); }
+.lead { color: var(--reiq-text-secondary); margin: 0 0 14px; font-size: var(--cds-body-01-font-size); line-height: var(--cds-body-01-line-height); }
+.kpi { padding: 12px 14px; } .kpi .l { color: var(--reiq-text-secondary); font-size: 12px; } .kpi .v { font-size: 28px; line-height: 1.15; margin: 2px 0; } .kpi .d { font-size: 12px; color: var(--reiq-text-helper); }
+/* A screen's filter row (Controls.tsx's Ctl, a Carbon <Layer>): Carbon fields with their labels
+   above, bottoms aligned. Unboxed - the fields' own fill marks the row, as in land-feasibility. */
+.ctl { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--cds-spacing-05); margin: 0 0 var(--cds-spacing-05); }
+.df-field { inline-size: 16rem; max-inline-size: 100%; }
+.df-field-group { display: flex; flex-direction: column; }
+.df-switcher { inline-size: max-content; max-inline-size: 100%; }
+/* Carbon gives every switch an equal share and ellipsises the rest ("Kolkata d…", "20…"); here
+   each switch is as wide as its own label instead. Width only - height stays Carbon's sm. */
+.df-switcher.cds--content-switcher .cds--content-switcher-btn { flex: none; inline-size: auto; }
+.df-slider { inline-size: 16rem; max-inline-size: 100%; }
+.df-grow { flex: 1; min-inline-size: 0; }
+/* A screen's sub-view tabs (SubNav). */
+.df-subnav { margin: 0 0 var(--cds-spacing-05); }
+.callout { border-left: 3px solid var(--reiq-chart-highlight); background: var(--reiq-layer-hover); padding: 8px 12px; font-size: 13px; color: var(--reiq-text-secondary); margin: 8px 0; }
+.pill-row { display: flex; gap: var(--cds-spacing-03); flex-wrap: wrap; }
+/* A suggested question is useless cut in half: let these tags show their whole text. */
+.pill-row .cds--tag { max-inline-size: none; }
+/* charts */
+svg.ch { display: block; max-inline-size: 100%; overflow: visible; }
+svg.ch text { font-family: inherit; fill: var(--reiq-text-helper); font-size: 11px; }
+svg.ch .grid { stroke: var(--reiq-border-subtle); stroke-width: 1; } svg.ch .axis { stroke: var(--reiq-border-subtle); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 6px; font-size: 12px; color: var(--reiq-text-secondary); }
+.legend button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; }
+.legend .sw { width: 14px; height: 3px; display: inline-block; } .legend .off { opacity: .38; text-decoration: line-through; }
+.chart-wrap { position: relative; padding-top: var(--cds-spacing-07); }
+.chart-wrap > .zbtn { position: absolute; right: 0; top: calc(-1 * var(--cds-spacing-02)); z-index: 2; }
+.tip { position: fixed; z-index: 10000; pointer-events: none; background: var(--reiq-ui-background); color: var(--reiq-text-primary); border: 1px solid var(--reiq-border-subtle); padding: 8px 10px; font-size: 12px; box-shadow: var(--reiq-shadow-raised); max-width: 320px; }
+.tip b { font-weight: 600; } .tip .r { display: flex; gap: 8px; justify-content: space-between; align-items: center; } .tip .r i { width: 9px; height: 9px; display: inline-block; margin-right: 6px; }
+
+/* ---- the one table (components/DataTable.tsx) ---- */
+.df-table .cds--data-table-container { padding-top: 0; }
+.df-num { text-align: end; font-variant-numeric: tabular-nums; }
+th.df-num .cds--table-sort__flex { justify-content: flex-end; }
+.df-row-click { cursor: pointer; }
+
+/* ---- use-case tiles (components/UseCaseTile.tsx) ---- */
+.df-uc-tile { display: flex; flex-direction: column; gap: var(--cds-spacing-02); border: 1px solid var(--reiq-border-subtle); }
+.df-uc-n { font-size: var(--cds-label-01-font-size); line-height: var(--cds-label-01-line-height); color: var(--reiq-text-helper); }
+.df-uc-title { font-weight: var(--reiq-weight-semibold); color: var(--reiq-text-primary); }
+.df-uc-desc { font-size: var(--cds-label-01-font-size); line-height: var(--cds-label-01-line-height); color: var(--reiq-text-secondary); }

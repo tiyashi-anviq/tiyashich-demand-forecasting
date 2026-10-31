@@ -1,0 +1,307 @@
+/* Margins, not a container gap: the eyebrow, breadcrumb, title and subtitle each
+   own their own spacing, so a header that omits one closes the gap rather than
+   leaving a hole where a flex gap would have been. */
+.module-page-header {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky maths - the single most copied-wrong rule in this app.
+   `top` is NEGATIVE spacing-03, not 0: a sticky element's stuck offset anchors
+   just past its scrolling ancestor's padding-top, and the content column has
+   spacing-03 of it. Left at 0 that gap is a real uncovered strip showing
+   mid-scroll content sliding past above the header.
+   A negative margin-top cannot fix this - a sticky element's stuck offset
+   ignores margins entirely. Only `top` moves it.
+   padding-top re-absorbs the negative offset so the header's own spacing is
+   unchanged; padding-bottom, not margin, because margins collapse. */
+.module-page-header-sticky {
+  position: sticky;
+  top: calc(-1 * var(--cds-spacing-03));
+  z-index: 200;
+  /* Opaque on purpose - content scrolls underneath it. */
+  background: var(--reiq-ui-01);
+  padding-top: var(--cds-spacing-03);
+  padding-bottom: var(--cds-spacing-04);
+}
+
+/* On mobile the page scrolls as a whole, so a sticky header would pin to the
+   VIEWPORT at a negative offset, tucked under the fixed top bar. A header that
+   scrolls away is the honest mobile behaviour. */
+@media (max-width: 671px) {
+  .module-page-header-sticky {
+    position: static;
+  }
+}
+
+.module-page-header-crumb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-04);
+  margin-top: var(--cds-spacing-05);
+  margin-bottom: var(--cds-spacing-03);
+}
+
+.module-page-header-sticky .module-page-header-crumb-row {
+  margin-top: 0;
+}
+
+/* Carbon's Breadcrumb ships its own bottom margin, sized for sitting directly
+   above a plain h1. Redundant once it is a flex child in a row whose own gap
+   already provides the spacing. */
+.module-page-header-crumb-row .cds--breadcrumb {
+  margin: 0;
+}
+
+.module-page-header-hub-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-02);
+  color: var(--reiq-link-01);
+  text-decoration: none;
+}
+
+.module-page-header-hub-crumb:hover {
+  text-decoration: underline;
+}
+
+.module-page-header-hub-crumb:focus-visible {
+  outline: 2px solid var(--reiq-focus);
+  outline-offset: 2px;
+}
+
+.module-page-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-02);
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-link-01);
+}
+
+/* A top-of-hierarchy page has no real parent to breadcrumb into, so it gets a
+   plain uppercase label instead of a link.
+
+   margin: 0, for the same reason the Breadcrumb above it is zeroed: this sits
+   INSIDE .module-page-header-crumb-row, which already owns the row's spacing. */
+.module-page-header-eyebrow {
+  display: block;
+  margin: 0;
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--reiq-letter-spacing-caps);
+  color: var(--reiq-interactive-01);
+}
+
+/* The title and the action cluster share one row for as long as both fit, and the
+   title is the part that gives way: it is the only thing here whose length is user
+   data, while the buttons have no sensible intermediate size. The threshold is the
+   title's flex-basis below - a row too narrow to hold that much title AND the
+   cluster wraps the cluster onto its own line, which is a real layout rather than
+   a heading squeezed to nothing. */
+.module-page-header .app-title-row {
+  flex-wrap: wrap;
+}
+
+/* heading-05 at weight 400, deliberately not Carbon's own h1 (Light/300) - at
+   this size 300 reads as unfinished against the semibold rows below it.
+
+   One line, ellipsised: a 200-character forecast name is cut to whatever the row
+   has left rather than at some fixed character count, so the heading fits every
+   width without a breakpoint. min-width: 0 is what lets it shrink at all - a flex
+   item refuses to go below its content's width without it, which is exactly what
+   was pushing the buttons onto their own row. */
+.module-page-title {
+  /* 16rem is the least title worth showing; narrower than that and the cluster
+     drops to its own row instead. min-width: 0 is what lets the heading shrink
+     below its text at all - a flex item refuses to, which is exactly what was
+     pushing the buttons down on a wide window. */
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0 0 var(--cds-spacing-02);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--cds-heading-05-font-size);
+  line-height: var(--cds-heading-05-line-height);
+  font-weight: var(--reiq-weight-regular);
+  color: var(--reiq-text-primary);
+}
+
+.module-page-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* Never squeezed, but allowed to stack on a phone, where four buttons are wider
+     than the screen. */
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+}
+
+/* The last crumb is the same user-supplied name as the title, so it ends the same
+   way: one line, cut with an ellipsis. Carbon's Breadcrumb is a wrapping flex row,
+   so a long name otherwise takes two or three lines of the header for a label that
+   is already the heading underneath it.
+
+   Every box between the text and the row needs min-width: 0, or the ellipsis never
+   engages: each is a flex item, and a flex item's automatic minimum size is its
+   content, so the overflow lands outside the pane instead of inside the crumb. */
+.module-page-header-breadcrumb,
+.module-page-header-breadcrumb .cds--breadcrumb,
+.module-page-header-breadcrumb .cds--breadcrumb-item--current {
+  min-width: 0;
+}
+
+/* The cut goes on the link inside, not on the <li>: the item is a flex row that
+   also carries the trailing separator, and turning it into a block costs the row
+   its alignment and an extra line of height. */
+.module-page-header-breadcrumb .cds--breadcrumb-item--current .cds--link {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-page-subtitle {
+  margin: 0 0 var(--cds-spacing-04);
+  max-width: 42rem;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-secondary);
+}
+
+/* The subtitle is the header's last child, so its bottom margin would otherwise
+   stack on top of the header's own padding AND whatever gap the page's column
+   adds. */
+.module-page-subtitle:last-child {
+  margin-bottom: 0;
+}
+
+/* The compact bar, as on carbondesignsystem.com: once the title scrolls away, the title and the
+   actions pin to the top of the pane. It lives in ModuleShell's page bar slot, so it covers
+   content rather than pushing it: nothing below moves when it appears. Fades, as only opacity
+   changes. spacing-10 tall: room for a 48px button plus air. */
+.module-page-bar {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--cds-spacing-10);
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-05);
+  /* The title lines up with the header card's own text: the pane padding plus the card's. */
+  padding-inline: calc(var(--module-page-bar-inset, var(--cds-spacing-06)) + var(--cds-spacing-06));
+  background: var(--reiq-ui-background);
+  border-bottom: 1px solid var(--reiq-border-subtle);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--reiq-motion-fast),
+    visibility var(--reiq-motion-fast);
+}
+
+/* Desktop: the button cluster moves as one. It never shrinks and never stacks its own buttons;
+   a long title is what gives way (ellipsis), and in the tall header the whole cluster drops to its
+   own row instead. Seen with a long chat name: Rename and Delete stacked into a column. A phone
+   keeps the wrapping above, where four buttons are wider than the screen. */
+@media (min-width: 672px) {
+  .module-page-header-actions {
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+  }
+}
+
+.module-page-bar-stuck {
+  opacity: 1;
+  visibility: visible;
+}
+
+.module-page-bar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--cds-heading-03-font-size);
+  line-height: var(--cds-heading-03-line-height);
+  font-weight: var(--reiq-weight-regular);
+  color: var(--reiq-text-primary);
+}
+
+/* A header with a toolbar pins at minus the toolbar's offset (set by the component), so the
+   rows above slide under the compact bar and the toolbar sits right below it. */
+.module-page-header-pin-toolbar {
+  top: calc(
+    var(--cds-spacing-10) - var(--cds-spacing-03) - var(--module-page-header-toolbar-offset)
+  );
+}
+
+/* A tabbed record page pins its tab row under the compact bar: the tabs are what a person
+   reaches for mid-scroll. Same maths as the toolbar above, with no offset. */
+.tabs-sticky {
+  position: sticky;
+  top: calc(var(--cds-spacing-10) - var(--cds-spacing-03));
+  z-index: 200;
+  background: var(--reiq-ui-background);
+}
+
+/* Once pinned (ModuleShell marks it data-pinned), the tab row spans rail to edge, as the bar
+   above it does; its tabs stay where they were. Unpinned, it keeps the card's width. */
+@media (min-width: 672px) {
+  .module-shell-content .tabs-sticky[data-pinned] {
+    /* auto, not Carbon's 100%: a 100% width keeps the row one pane wide and the negative
+       margins only shift it, so it ended short of the right edge. */
+    width: auto;
+    margin-inline: calc(-1 * var(--cds-spacing-06));
+    padding-inline: var(--cds-spacing-06);
+  }
+}
+
+@media (max-width: 671px) {
+  .tabs-sticky {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .module-page-bar {
+    transition-duration: 0s;
+  }
+}
+
+/* With the compact bar there to pin, the full header no longer has to stay small: it gets
+   room, as the top of a carbondesignsystem.com page does. It scrolls away, so the height costs
+   nothing once reading starts. Desktop only: mobile has no compact bar. */
+@media (min-width: 672px) {
+  /* A card on the grey pane, as on carbondesignsystem.com: the page's own surface, square, no
+     shadow - it is not clickable. Little space above the breadcrumb; the room goes between the
+     breadcrumb and the title, and under the header. The compact bar and the pinned tab row use
+     the same surface, so the card reads as one piece once it pins. */
+  .module-page-header-hero {
+    padding: var(--cds-spacing-05) var(--cds-spacing-06) var(--cds-spacing-10);
+    margin-bottom: var(--cds-spacing-06);
+    background: var(--reiq-ui-background);
+  }
+
+  .module-page-header-hero .module-page-header-crumb-row {
+    margin-top: 0;
+    margin-bottom: var(--cds-spacing-09);
+  }
+
+  .module-page-header-hero .module-page-title {
+    margin-bottom: var(--cds-spacing-05);
+  }
+
+  .module-page-header-hero .module-page-header-toolbar {
+    margin-top: var(--cds-spacing-06);
+  }
+
+  /* A pinned toolbar keeps its tight bottom edge: that padding stays on screen under it. */
+  .module-page-header-hero.module-page-header-pin-toolbar {
+    padding-bottom: var(--cds-spacing-04);
+  }
+}

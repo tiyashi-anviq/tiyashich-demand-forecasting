@@ -1,0 +1,7 @@
+/* Intrinsic aspect ratio (587x161) preserved via width: auto - only height is ever set by a call
+   site, through this one class, so the mark never stretches. */
+.brand-mark {
+  display: block;
+  height: 1.25rem;
+  width: auto;
+}

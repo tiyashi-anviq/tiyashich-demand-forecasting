@@ -1,0 +1,66 @@
+/* A chart with its Chart / Table switch above, flush right; the table takes the chart's height. */
+.chart-or-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-04);
+}
+
+.chart-or-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cds-spacing-04);
+}
+
+.chart-or-table-head-end {
+  justify-content: flex-end;
+}
+
+.chart-or-table-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-04);
+  margin-inline-start: auto;
+}
+
+.chart-or-table-controls > .cds--content-switcher {
+  flex: none;
+  width: auto;
+  inline-size: max-content;
+  max-inline-size: 100%;
+}
+
+/* Carbon gives every switch an equal share and ellipsises the rest ("Ch..."); here each switch is
+   as wide as its own word. Width only - height stays Carbon's sm. */
+.chart-or-table-controls > .cds--content-switcher .cds--content-switcher-btn {
+  flex: none;
+  inline-size: auto;
+}
+
+.chart-or-table-body {
+  max-height: var(--reiq-size-chart-card-body);
+  overflow-y: auto;
+}
+
+/* Heading and switch share the row the chart reserves for its own toolbar (the chart's title is
+   empty). Both sit in one grid cell; the head leaves room on the right for the toolbar's two
+   icons and lets clicks through to it. */
+.chart-or-table-inline {
+  display: grid;
+}
+
+.chart-or-table-inline > .chart-or-table-head {
+  grid-area: 1 / 1;
+  align-self: start;
+  block-size: var(--cds-spacing-09);
+  padding-inline-end: calc(var(--cds-spacing-09) * 2);
+  pointer-events: none;
+}
+
+.chart-or-table-inline > .chart-or-table-head > * {
+  pointer-events: auto;
+}
+
+.chart-or-table-inline > .chart-holder {
+  grid-area: 1 / 1;
+}

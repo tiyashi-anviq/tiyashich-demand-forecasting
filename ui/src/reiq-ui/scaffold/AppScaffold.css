@@ -1,0 +1,83 @@
+.app-shell {
+  height: 100%;
+}
+
+/* Clears the fixed top bar. */
+.app-shell-body {
+  padding-top: var(--reiq-size-topbar);
+}
+
+/* With a chat pane: the page and the pane side by side, as a column that narrows the page (not an
+   overlay), like Google Cloud's assistant. Each keeps its own scroll; the two are the one allowed
+   pair (docs/feature/brand-layout.md). */
+.app-shell-with-chat {
+  display: flex;
+}
+
+.app-shell-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-chat-pane {
+  /* --app-chat-pane-width is the width the viewer dragged to (AppScaffold.tsx), clamped there to
+     the two size tokens; max-width holds the same cap in CSS. */
+  flex: 0 0 var(--app-chat-pane-width, var(--reiq-size-chat-panel));
+  max-width: var(--reiq-size-chat-panel-max);
+  min-width: var(--reiq-size-chat-panel);
+  position: sticky;
+  top: var(--reiq-size-topbar);
+  height: calc(100vh - var(--reiq-size-topbar));
+  height: calc(100dvh - var(--reiq-size-topbar));
+  display: flex;
+  flex-direction: column;
+  background: var(--reiq-ui-background);
+  border-left: 1px solid var(--reiq-border-subtle);
+}
+
+/* The drag handle: the pane's left edge, a few pixels wide, showing the focus colour while
+   dragged or focused. */
+.app-chat-pane-resizer {
+  position: absolute;
+  inset: 0 auto 0 calc(var(--cds-spacing-02) * -1);
+  width: var(--cds-spacing-03);
+  cursor: col-resize;
+  z-index: 1;
+  touch-action: none;
+}
+
+.app-chat-pane-resizer:hover,
+.app-chat-pane-resizer:focus-visible,
+.is-resizing .app-chat-pane-resizer {
+  outline: none;
+  background: linear-gradient(to right, transparent 40%, var(--reiq-focus) 40%, var(--reiq-focus) 60%, transparent 60%);
+}
+
+/* While dragging, the pointer must not select page text or trigger hovers underneath. */
+.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.is-resizing .app-shell-main,
+.is-resizing .chat-pane {
+  pointer-events: none;
+}
+
+/* Phone: no room beside the page, so the pane covers it, under the top bar (layer 8600,
+   docs/feature/brand-layering.md). 672px literal: var() does not work in a media query. */
+@media (max-width: 671px) {
+  .app-chat-pane {
+    position: fixed;
+    inset: var(--reiq-size-topbar) 0 0 0;
+    height: auto;
+    z-index: 8600;
+    border-left: 0;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .app-chat-pane-resizer {
+    display: none;
+  }
+}

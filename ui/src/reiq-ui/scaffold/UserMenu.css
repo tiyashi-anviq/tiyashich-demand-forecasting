@@ -1,0 +1,216 @@
+.user-menu {
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-menu-signin {
+  display: inline-flex;
+  align-items: center;
+  margin-right: var(--cds-spacing-04);
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--reiq-link-01);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.user-menu-signin:hover {
+  text-decoration: underline;
+}
+
+.user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-03);
+  height: 100%;
+  padding: 0 var(--cds-spacing-04);
+  border: none;
+  background: transparent;
+  color: var(--reiq-text-primary);
+  cursor: pointer;
+  transition: background-color var(--reiq-motion-fast);
+}
+
+.user-menu-trigger:hover {
+  background-color: var(--reiq-layer-hover);
+}
+
+.user-menu-trigger:focus-visible {
+  outline: 2px solid var(--reiq-focus);
+  outline-offset: -2px;
+}
+
+/* Circular shape is a ratio (50%), not a card corner - --reiq-radius-card
+   (always 0, see brand-layout.md) governs square surfaces only. */
+.user-menu-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--cds-spacing-07);
+  height: var(--cds-spacing-07);
+  border-radius: var(--reiq-radius-round);
+  background-color: var(--reiq-interactive-01);
+  color: var(--reiq-text-on-color);
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+}
+
+.user-menu-avatar-lg {
+  width: var(--cds-spacing-09);
+  height: var(--cds-spacing-09);
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+}
+
+.user-menu-name {
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 10rem;
+}
+
+.user-menu-chevron {
+  flex: 0 0 auto;
+  color: var(--reiq-icon-secondary);
+  transition: transform var(--reiq-motion-fast);
+}
+
+.user-menu-trigger[aria-expanded='true'] .user-menu-chevron {
+  transform: rotate(180deg);
+}
+
+/* display is deliberately left unset here - Carbon's own
+   .cds--popover-content { display: none } / .cds--popover--open ... {
+   display: block } toggles visibility, and a same-specificity single-class
+   rule here would win by source order and defeat that regardless of the
+   `open` prop. The flex layout instead lives on the inner wrapper below. */
+.user-menu-panel {
+  min-width: 16rem;
+  padding: var(--cds-spacing-04) 0;
+  background-color: var(--reiq-ui-background);
+  border: 1px solid var(--reiq-border-subtle);
+  border-radius: var(--reiq-radius-card);
+  box-shadow: var(--reiq-shadow-raised);
+}
+
+.user-menu-panel-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-menu-header {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-04);
+  padding: 0 var(--cds-spacing-05) var(--cds-spacing-04);
+}
+
+.user-menu-identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--cds-spacing-01);
+}
+
+.user-menu-identity-name {
+  font-size: var(--cds-body-02-font-size);
+  line-height: var(--cds-body-02-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-identity-email {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--reiq-text-helper);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-divider {
+  height: 1px;
+  margin: var(--cds-spacing-03) 0;
+  background-color: var(--reiq-border-subtle);
+}
+
+/* Both a <button> (the account actions) and an <a> (Administration) wear this, so it resets
+   the anchor's underline as well as the button's chrome. */
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cds-spacing-03);
+  width: 100%;
+  padding: var(--cds-spacing-03) var(--cds-spacing-05);
+  border: none;
+  background: transparent;
+  color: var(--reiq-text-primary);
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--reiq-motion-fast);
+}
+
+.user-menu-item:hover {
+  background-color: var(--reiq-layer-hover);
+}
+
+.user-menu-item:focus-visible {
+  outline: 2px solid var(--reiq-focus);
+  outline-offset: -2px;
+}
+
+.user-menu-item-danger {
+  color: var(--reiq-status-red-fg);
+}
+
+.user-menu-item-danger:hover {
+  background-color: var(--reiq-status-red-bg);
+}
+
+/* Honestly inert: no hover fill, no focus ring, default cursor - a "Coming
+   soon" row is not a control a pointing device or the keyboard should stop
+   on, unlike Sign out and any link above it once one is wired up. */
+.user-menu-item-disabled {
+  color: var(--reiq-text-helper);
+  cursor: default;
+}
+
+.user-menu-item-disabled:hover {
+  background-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-menu-trigger,
+  .user-menu-chevron,
+  .user-menu-item {
+    transition-duration: 0s;
+  }
+}
+
+/* Avatar only in the top bar - the name and chevron have nowhere to go on a
+   375px header that already carries the hamburger, brand and theme toggle.
+   The full name (and email) still show inside the popover once it opens, so
+   nothing is actually lost, only the collapsed trigger's own label. */
+@media (max-width: 671px) {
+  .user-menu-trigger {
+    gap: 0;
+    padding: 0 var(--cds-spacing-03);
+  }
+
+  .user-menu-name,
+  .user-menu-chevron {
+    display: none;
+  }
+}

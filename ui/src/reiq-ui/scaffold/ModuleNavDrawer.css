@@ -1,0 +1,110 @@
+/* Same tier as SettingsDrawer's own backdrop/panel (9500/9501): both are
+   app-level overlays that must sit above every sticky in-page header, and
+   one shared tier is what stops two slide-overs from ever painting over
+   each other. */
+.module-nav-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: var(--reiq-scrim-backdrop);
+  border: none;
+  padding: 0;
+}
+
+.module-nav-drawer-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 9501;
+  /* Defaults to the rail's own desktop width - this drawer holds the same
+     content the desktop rail does, so it gets the same width by default.
+     A caller wrapping a different desktop column (e.g. product-mix's own
+     filter rail, `--reiq-size-filter-rail`) overrides this via the
+     `width` prop rather than a second hardcoded value here. */
+  width: var(--module-nav-drawer-width, var(--reiq-size-sidebar));
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--reiq-ui-01);
+  box-shadow: var(--reiq-shadow-raised);
+  animation: module-nav-drawer-in-left var(--reiq-motion-fast);
+}
+
+.module-nav-drawer-panel[data-anchor='left'] {
+  inset: 0 auto 0 0;
+}
+
+.module-nav-drawer-panel[data-anchor='right'] {
+  inset: 0 0 0 auto;
+  animation-name: module-nav-drawer-in-right;
+}
+
+@keyframes module-nav-drawer-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes module-nav-drawer-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .module-nav-drawer-panel {
+    animation-duration: 0.01ms;
+  }
+}
+
+/* A real header row - same padding/border-bottom as SettingsDrawer's own
+   header (lf-drawer-header) - rather than the close button floating loose
+   above the content with no chrome of its own. Content below (e.g. the rail's
+   site-context block) supplies its own heading; this row exists only to give
+   the close affordance a proper top bar to sit in. */
+.module-nav-drawer-header {
+  display: flex;
+  justify-content: flex-end;
+  flex: none;
+  padding: var(--cds-spacing-03) var(--cds-spacing-04);
+  border-bottom: 1px solid var(--reiq-border-subtle);
+}
+
+.module-nav-drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  background: none;
+  color: var(--reiq-icon-secondary);
+  cursor: pointer;
+}
+
+.module-nav-drawer-close:hover {
+  background: var(--reiq-layer-hover);
+  color: var(--reiq-text-primary);
+}
+
+.module-nav-drawer-close:focus-visible {
+  outline: 2px solid var(--reiq-focus);
+  outline-offset: -2px;
+}
+
+/* No scroll of its own - the wrapped content (ModuleSidebar, or
+   product-mix's own filter rail) already manages its own single scroll
+   region; a second overflow here would nest two scrollbars for one
+   interaction. */
+.module-nav-drawer-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

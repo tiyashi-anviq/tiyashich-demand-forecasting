@@ -1,0 +1,18 @@
+# dependencies and environments
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+# built or generated at run time
+api/storage/
+api/data/
+ui/dist/
+*.log
+# local leftovers
+backups/
+_to_delete/
+*.tgz
+*.bak
+eveready_app_src.zip
+.DS_Store
+.env.local

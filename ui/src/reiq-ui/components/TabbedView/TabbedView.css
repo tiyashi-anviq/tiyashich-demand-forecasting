@@ -1,0 +1,34 @@
+.tabbed-view-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cds-spacing-03) var(--cds-spacing-05);
+  margin: 0 0 var(--cds-spacing-05);
+}
+
+/* Under the page bar, and under the header toolbar when the page has one. */
+.tabbed-view-row.tabs-sticky {
+  top: calc(var(--cds-spacing-10) - var(--cds-spacing-03) + var(--tabbed-view-toolbar-pin, 0px));
+}
+
+.tabbed-view-row > :first-child {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.tabbed-view-panel {
+  padding: 0;
+}
+
+.tabbed-view-end {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-inline-start: auto;
+}
+
+@media (max-width: 671px) {
+  .tabbed-view-row {
+    flex-wrap: wrap;
+  }
+}

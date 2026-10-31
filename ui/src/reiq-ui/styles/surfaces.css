@@ -1,0 +1,324 @@
+/* The recurring surface recipes from the style kit, in one place so no page
+   invents a second version of a shape that already exists.
+   Section numbers refer to the Land Feasibility UI style kit. */
+
+/* ---- 12.1 the base card: flat, square, bordered ---- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03);
+  padding: var(--cds-spacing-05);
+  background: var(--reiq-ui-01);
+  border: 1px solid var(--reiq-border-subtle);
+  /* Carbon's Tile ships its own shadow; the card language here is flat. */
+  box-shadow: none;
+}
+
+/* Recessed inside a card: a derived takeaway reading as a distinct surface
+   next to the neutral inputs beside it. */
+.card-recessed {
+  background: var(--reiq-layer-01);
+}
+
+/* A Tile used as a layout wrapper rather than a card. Carbon's default Tile
+   padding would stack on top of the panel's own AND each inner card's. */
+.card-flush {
+  padding: 0;
+  box-shadow: none;
+  background: var(--reiq-ui-01);
+  border: 1px solid var(--reiq-border-subtle);
+}
+
+.card-flush-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+  min-height: var(--cds-spacing-07);
+  padding: var(--cds-spacing-05) var(--cds-spacing-05) 0;
+}
+
+.card-flush-body {
+  padding: var(--cds-spacing-05);
+}
+
+/* A head that sits directly on a table has to own the gap under it, because the
+   table cannot: its header band is a filled surface, and with the head's own
+   padding-bottom at 0 the title's box ends exactly where that band begins. A card
+   whose head is followed by a .card-flush-body already gets the space from the
+   body's own padding, which is why this is not simply padding on the head. */
+.card-flush-head + .table-scroll {
+  margin-top: var(--cds-spacing-04);
+}
+
+/* ---- the overview panel (12.1) ---- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-04);
+  min-width: 0;
+  padding: var(--cds-spacing-05);
+  background: var(--reiq-ui-01);
+  border: 1px solid var(--reiq-border-subtle);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+  min-height: var(--cds-spacing-07);
+}
+
+.panel-title {
+  margin: 0;
+  margin-right: auto;
+  font-size: var(--cds-body-02-font-size);
+  line-height: var(--cds-body-02-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+}
+
+.panel-count {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--reiq-text-helper);
+}
+
+/* ---- type recipes (7.4) ---- */
+
+.micro-label {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--reiq-letter-spacing-caps);
+  color: var(--reiq-text-helper);
+}
+
+.card-title {
+  margin: 0;
+  font-size: var(--cds-body-02-font-size);
+  line-height: var(--cds-body-02-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+}
+
+.card-title-sm {
+  margin: 0;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+}
+
+.supporting {
+  margin: 0;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-secondary);
+}
+
+.footnote {
+  margin: 0;
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--reiq-text-helper);
+}
+
+.prose {
+  margin: 0;
+  max-width: 44rem;
+  font-size: var(--cds-body-01-font-size);
+  line-height: var(--cds-body-01-line-height);
+  color: var(--reiq-text-primary);
+  white-space: pre-wrap;
+}
+
+.mono {
+  font-family: var(--reiq-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An absence must never look like a value (12.19). Italic AND helper-toned,
+   so the distinction survives a greyscale read. */
+.unscored {
+  font-style: italic;
+  color: var(--reiq-text-helper);
+  font-weight: var(--reiq-weight-regular);
+}
+
+/* ---- 12.2 the KPI / stat tile ---- */
+
+/* auto-fit from an 11rem floor: reflows continuously with no media query.
+   min(100%, 11rem) is required, not decorative -- a bare 11rem floor overflows
+   once the CONTAINER is narrower than that. */
+.kpi-grid {
+  display: grid;
+  gap: var(--cds-spacing-05);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+}
+
+.kpi-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03);
+  border: 1px solid var(--reiq-border-subtle);
+  box-shadow: none;
+}
+
+.kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+
+.kpi-label {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--reiq-letter-spacing-caps);
+  color: var(--reiq-text-helper);
+}
+
+/* No truncation: a real value stays fully readable; the tile grows instead. */
+.kpi-value {
+  font-size: var(--cds-heading-03-font-size);
+  line-height: var(--cds-heading-03-line-height);
+  font-weight: var(--reiq-weight-semibold);
+  color: var(--reiq-text-primary);
+  overflow-wrap: break-word;
+}
+
+.kpi-sub {
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  color: var(--reiq-text-secondary);
+  overflow-wrap: break-word;
+}
+
+/* ---- 12.6 progress / score bars ---- */
+
+.bar-track {
+  flex: 1 1 6rem;
+  min-width: 3rem;
+  height: 0.375rem;
+  background: var(--reiq-layer-selected);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--bar-fill-color, var(--reiq-interactive-01));
+}
+
+/* ---- 12.14 segmented preset buttons ---- */
+
+.preset {
+  flex: 1;
+  border: 1px solid var(--reiq-border-subtle);
+  background: var(--reiq-ui-01);
+  padding: var(--cds-spacing-02) var(--cds-spacing-01);
+  font-family: inherit;
+  font-size: var(--cds-label-01-font-size);
+  line-height: var(--cds-label-01-line-height);
+  text-align: center;
+  color: var(--reiq-text-primary);
+  cursor: pointer;
+}
+
+.preset:hover {
+  background: var(--reiq-layer-hover);
+}
+
+.preset:focus-visible {
+  outline: 2px solid var(--reiq-focus);
+  outline-offset: 2px;
+}
+
+/* Active is carried by border, fill AND weight -- not colour alone. */
+.preset-active {
+  border-color: var(--reiq-interactive-01);
+  background: var(--reiq-tag-background-brand);
+  color: var(--reiq-interactive-01);
+  font-weight: var(--reiq-weight-semibold);
+}
+
+/* ---- stacks and rows ---- */
+
+.stack-03 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03);
+}
+
+.stack-05 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-05);
+}
+
+.stack-07 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-07);
+}
+
+.row-03 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-04);
+}
+
+/* Carbon gives each checkbox its own bottom margin, which doubles up with a
+   list's own gap (11.6). */
+.checkbox-flush .cds--form-item.cds--checkbox-wrapper {
+  margin-bottom: 0;
+}
+
+/* Carbon's form items carry a bottom margin sized for a stacked form; inside a
+   grid whose own gap already provides it, that margin is a second inset. */
+.form-grid {
+  display: grid;
+  gap: var(--cds-spacing-05);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.form-grid .cds--form-item {
+  margin-bottom: 0;
+}
+
+/* ---- field boxes ----
+   Carbon ships a form-underline look (bottom border only) for several controls.
+   This app's field language is a real box, so the box is drawn on the element
+   that contains the whole control. The NumberInput WRAPPER contains both the
+   input and its stepper buttons, so bordering it draws one box around the whole
+   control rather than around the text alone. Kept here, not in the shared
+   carbon-theme-tokens.scss, so that file stays an identical copy across apps. */
+.cds--number__input-wrapper {
+  border: 1px solid var(--reiq-border-subtle);
+  overflow: hidden;
+}
+
+.cds--number input[type='number'] {
+  border-bottom: none;
+}
+
+.cds--list-box {
+  border: 1px solid var(--reiq-border-subtle);
+}

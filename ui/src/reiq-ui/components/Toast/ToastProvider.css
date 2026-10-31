@@ -1,0 +1,19 @@
+.toast-container {
+  position: fixed;
+  right: var(--cds-spacing-05);
+  bottom: var(--cds-spacing-05);
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03);
+}
+
+/* Carbon relies on its LAST content element to carry the toast's bottom
+   breathing room, so an action link needs its own margins or the toast reads
+   as cropped. */
+.toast-action {
+  display: inline-block;
+  margin-top: var(--cds-spacing-03);
+  margin-bottom: var(--cds-spacing-05);
+  color: var(--reiq-link-01);
+}

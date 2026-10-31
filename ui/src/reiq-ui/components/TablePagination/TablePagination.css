@@ -1,0 +1,7 @@
+/* The table's own footer: it must not grow past its content height, and stays square beside
+   the card it sits in (radius-card is 0 everywhere; kept explicit so a future change moves
+   both together). */
+.table-pagination.cds--pagination {
+	flex: 0 0 auto;
+	border-radius: 0;
+}
