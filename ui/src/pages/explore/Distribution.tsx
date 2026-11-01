@@ -52,22 +52,22 @@ export default function Distribution({ f, opts, onClear }: { f: Filters; opts: O
             <Tile className="card">
               <h3 className="card-title">Weekly Sales Distribution</h3>
               <div className="kpi-grid">
-                <div>
+                <div className="distribution-kpi">
                   <span className="kpi-label">Median Week</span>
                   <span className="kpi-value">{fmtN(d.median, 0)}</span>
                   <span className="kpi-sub">units per week</span>
                 </div>
-                <div>
+                <div className="distribution-kpi">
                   <span className="kpi-label">Low Volume</span>
                   <span className="kpi-value">{fmtPct(lowVol / totalValues, 0)}</span>
                   <span className="kpi-sub">under 100 units</span>
                 </div>
-                <div>
+                <div className="distribution-kpi">
                   <span className="kpi-label">Typical Range</span>
                   <span className="kpi-value">{fmtPct(medVol / totalValues, 0)}</span>
                   <span className="kpi-sub">100-5k units</span>
                 </div>
-                <div>
+                <div className="distribution-kpi">
                   <span className="kpi-label">High Volume</span>
                   <span className="kpi-value">{fmtPct(highVol / totalValues, 0)}</span>
                   <span className="kpi-sub">over 5k units</span>

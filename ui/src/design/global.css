@@ -29,9 +29,13 @@
 
 /* Dense minor gridlines compete with the data on logarithmic bar charts. */
 .log-bars-chart :is(g.x.grid, g.y.grid) { display: none; }
+.log-bars-chart .cds--cc--grid rect.chart-grid-backdrop { fill: transparent; }
+.log-bars-chart .cds--cc--grid rect.chart-grid-backdrop.stroked { stroke: transparent; }
 
 /* The focused page shell: one column, no side rail. */
 .settings-column { max-inline-size: 64rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--cds-spacing-06); }
+
+.distribution-kpi { display: flex; flex-direction: column; align-items: flex-start; gap: var(--cds-spacing-02); }
 
 /* ---- the data setup wizard ---- */
 .wizard-footer { position: sticky; inset-block-end: 0; z-index: 2; display: flex; align-items: center; gap: var(--cds-spacing-05); padding: var(--cds-spacing-05); background: var(--reiq-ui-background); border-block-start: 1px solid var(--reiq-border-subtle); }
