@@ -187,6 +187,27 @@
   color: var(--reiq-text-helper);
 }
 
+.kpi-label:has(.kpi-label-content) {
+  display: block;
+}
+
+.kpi-label-content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cds-spacing-02);
+  max-inline-size: 100%;
+  vertical-align: middle;
+}
+
+.kpi-label .kpi-label-text {
+  min-width: 0;
+}
+
+.kpi-label .info-tip {
+  flex: none;
+  margin-inline-start: 0;
+}
+
 /* No truncation: a real value stays fully readable; the tile grows instead. */
 .kpi-value {
   font-size: var(--cds-heading-03-font-size);

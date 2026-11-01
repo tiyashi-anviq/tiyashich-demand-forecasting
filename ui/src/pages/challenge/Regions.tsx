@@ -102,7 +102,7 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
       <LineGrid rows={rows} label={`${region} ${family} by channel and SKU`} editable={canEdit} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion={false} />
       {d.status === 'agreed' ? (
         <div className="stack-03">
-          <InlineNotification kind="success" lowContrast hideCloseButton title={`Agreed at ${fmtInt(d.total)} units.`} subtitle={`${entry.agreed_by}. ${locked ? 'This family has gone to the business units, so the regional numbers are locked.' : 'It goes to the business units once every region has agreed.'}`} />
+          <InlineNotification kind="success" lowContrast hideCloseButton title={`Agreed at ${fmtInt(d.total)} units.`} subtitle={`${entry.agreed_by}. ${locked ? 'This family has gone to the channels, so the regional numbers are locked.' : 'It goes to the channels once every region has agreed.'}`} />
           {role === 'sd' && !locked && <div><Button kind="tertiary" size="md" onClick={() => run('region/reopen', {}, 'Reopened')}>Reopen this region</Button></div>}
         </div>
       ) : locked ? null : mine ? (
@@ -152,7 +152,7 @@ export function RegionsSection({ it, role, pick, onPick, productFilter, stamp, o
   return (
     <div className="stack-05">
       <InlineNotification kind={locked ? 'success' : 'info'} lowContrast hideCloseButton title={locked ? 'Every region has agreed.' : `${it.n_regions_agreed} of ${it.n_regions} regions have agreed.`}
-        subtitle={locked ? `The family total of ${fmtInt(it.consolidated)} units has gone to the business units.` : 'The S&D Head and each Regional Head go back and forth, channel by channel and SKU by SKU, until the region agrees. When all regions have agreed, the family goes to the business units.'} />
+        subtitle={locked ? `The family total of ${fmtInt(it.consolidated)} units has gone to the channels.` : 'The S&D Head and each Regional Head go back and forth, channel by channel and SKU by SKU, until the region agrees. When all regions have agreed, the family goes to the channel heads.'} />
       {role !== 'regional' && <DataCard id="regs" title="Regions" description="One conversation per region. Select a row to open it" cols={cols} rows={regs}
         itemsLabel="Regions per page" rowKey={(r) => r.region} onRow={(r) => onPick(r.region)} selected={(r) => r.region === chosen?.region} />}
       {chosen ? <RegionPanel key={`${it.month}|${it.family}|${chosen.region}|${role}|${productFilter}`} month={it.month} family={it.family} region={chosen.region} role={role} locked={locked} productFilter={productFilter} stamp={stamp} onDone={onDone} /> : null}
@@ -211,7 +211,7 @@ export function AllocationSection({ month, family, stamp }: { month: string; fam
   )
 }
 
-/** A business unit's conversation with the S&D Head about one family: its channels in every region, channel by channel and SKU by SKU. */
+/** A channel head's conversation with the S&D Head about one channel, region by region and SKU by SKU. */
 export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role: Role; stamp: number; onDone: (c: any) => void }) {
   const { showToast } = useToast()
   const q = useQuery({ queryKey: ['bu-lines', it.month, it.family, b.bu, stamp], queryFn: () => getJson<any>(`/api/challenge/bu/lines?month=${it.month}&family=${it.family}&bu=${b.bu}`), staleTime: 0 })
@@ -258,7 +258,7 @@ export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role:
     <Tile className="card stack-05">
       <span className="card-heading">
         <span className="card-title">{b.name}: {it.family}, {it.month}</span>
-        <span className="footnote">{b.head}. Channels: {b.channels.join(', ')}. Model {fmtN(modelT)} units. Current number {fmtN(d.current)}, {fmtSigned(gap(d.current, modelT), 1)} against the model. Region by region, channel by channel, SKU by SKU.</span>
+        <span className="footnote">{b.head}. Channel: {b.channels.join(', ')}. Model {fmtN(modelT)} units. Current number {fmtN(d.current)}, {fmtSigned(gap(d.current, modelT), 1)} against the model. Region by region, SKU by SKU.</span>
       </span>
       {rounds.length > 0 && <DataCard id={`rounds-${b.bu}`} title="Negotiation so far" description={`Every round with ${b.head}, with the reason given`} cols={roundCols} rows={rounds} itemsLabel="Rounds per page" rowKey={(r) => String(r.n)} />}
       <LineGrid rows={d.rows} label={`${b.name} ${it.family} by region, channel and SKU`} editable={turnMine} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion />
@@ -280,7 +280,7 @@ export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role:
         </div>
       ) : (
         <InlineNotification kind="info" lowContrast hideCloseButton title={`Waiting for ${other}.`}
-          subtitle={`${fmtInt(b.proposal)} units is on the table. ${b.turn === 'bu' ? 'Open the BU Unit tab and pick this unit to respond.' : 'Open the S&D Head tab to respond.'}${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
+          subtitle={`${fmtInt(b.proposal)} units is on the table. ${b.turn === 'bu' ? 'Open the Channel Head tab and pick this channel to respond.' : 'Open the S&D Head tab to respond.'}${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
       )}
       {post.isError ? <ApiErrorNotification error={post.error} fallbackTitle="Could not record that" /> : null}
     </Tile>

@@ -87,7 +87,7 @@ export function Checks({ month, lead, items, onOpen }: { month: string; lead: nu
 
   const cols: Col<any>[] = [
     { header: 'Family', cell: (r) => r.family, sort: (r) => r.family },
-    { header: 'Business unit', cell: (r) => r.bu_name, sort: (r) => r.bu_name },
+    { header: 'Channel', cell: (r) => r.bu_name, sort: (r) => r.bu_name },
     { header: 'Number (units)', num: true, cell: (r) => fmtN(r.v), sort: (r) => r.v },
     { header: 'Against the model (%)', num: true, cell: (r) => dev(r.dM, R.model), sort: (r) => r.dM },
     { header: 'Against last year (%)', num: true, cell: (r) => dev(r.dL, R.ly, r.yoy), sort: (r) => r.dL },
@@ -131,7 +131,7 @@ export function Checks({ month, lead, items, onOpen }: { month: string; lead: nu
   return (
     <div className="stack-05">
       <StatRow items={[
-        { label: 'Numbers checked', value: rows.length, sublabel: 'Family by business unit, for the month' },
+        { label: 'Numbers checked', value: rows.length, sublabel: 'Family by channel, for the month' },
         { label: 'Passed', value: passed.length, sublabel: 'Broke no rule' },
         { label: 'Flagged', value: nFlag, sublabel: rows.length ? `${fmtPct(nFlag / rows.length, 0)} of the ${rows.length}. ${refFlagged} are far from a reference, ${stockFlagged} have a stock problem` : '' },
         { label: 'Released with a reason', value: rel.length, sublabel: `${open.length} of the ${nFlag} flagged still need a reason` },
@@ -159,16 +159,16 @@ export function Checks({ month, lead, items, onOpen }: { month: string; lead: nu
         </ContentSwitcher>
         <DataCard id="chk-q" title="Numbers checked" description={`${shown.length} shown. A flagged number is held until a reason is chosen and it is released. Decisions here are kept for this session only`} cols={cols} rows={shown}
           itemsLabel="Numbers per page" rowKey={(r) => r.key} defaultSort={{ col: 3, dir: 'desc' }}
-          note="Red figures are outside their limit. The number is the current one in the conversation with the business unit: agreed, or the latest proposal, or the unit's share of the regional total before it is sent. Regional submissions are simulated." />
+          note="Red figures are outside their limit. The number is the current one in the conversation for the channel: agreed, or the latest proposal, or the channel's share of the regional total before it is sent. Regional submissions are simulated." />
       </div>
 
       <Tile className="card stack-05">
         <span className="card-heading">
           <span className="card-title">Try a number</span>
-          <span className="footnote">Type a number for a family and business unit to see how it would be checked, and which numbers would pass, before it goes into the conversation.</span>
+          <span className="footnote">Type a number for a family and channel to see how it would be checked, and which numbers would pass, before it goes into the conversation.</span>
         </span>
         <div className="challenge-bar">
-          <Dropdown id="try-k" size="md" titleText="Family and business unit" label="Choose" items={rows} itemToString={(i: any) => (i ? `${i.family}, ${i.bu_name}` : '')} selectedItem={tr ?? null} onChange={({ selectedItem }) => { if (selectedItem) { setTryKey(selectedItem.key); setTryVal(undefined) } }} />
+          <Dropdown id="try-k" size="md" titleText="Family and channel" label="Choose" items={rows} itemToString={(i: any) => (i ? `${i.family}, ${i.bu_name}` : '')} selectedItem={tr ?? null} onChange={({ selectedItem }) => { if (selectedItem) { setTryKey(selectedItem.key); setTryVal(undefined) } }} />
           <NumberInput id="try-v" size="md" label="Number (units)" hideSteppers min={0} step={1000} value={val ?? 0} onChange={(_e: unknown, { value }: { value: number | string }) => setTryVal(num(value))} />
         </div>
         {tr && tc ? (

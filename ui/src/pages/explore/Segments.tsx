@@ -102,7 +102,7 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
               {d.baseline.length ? (
                 <ChartCard title="Naive Forecast Baseline" subtitle="Error using last year's value as forecast (test months)" label="Baseline forecast error by family"
                   headers={['Family', 'Months', 'Total error (%)', 'Under (%)', 'Over (%)']} rows={d.baseline.map((b: any) => [b.family, b.months, fmtPct(b.wape, 1), fmtPct(b.under, 1), fmtPct(b.over, 1)])}
-                  chart={<BarsChart horizontal items={d.baseline.map((b: any) => ({ label: b.family, value: b.wape }))} yTitle="Error (%)" fmt={(n) => fmtPct(n, 0)} label="Baseline forecast error by family" />}
+                  chart={<BarsChart horizontal items={d.baseline.map((b: any) => ({ label: b.family, value: b.wape }))} yTitle="Error (%)" xTitle="Family" fmt={(n) => fmtPct(n, 0)} label="Baseline forecast error by family" />}
                   note={d.baseline_series ? `Overall baseline error: ${fmtPct(d.baseline_series.wape, 1)} (${d.baseline_series.months} test months). Any model should beat this naive approach.` : undefined} />
               ) : (
                 <DataCard id="baseline" title="Naive Forecast Baseline" description="Needs at least three test months in the selected period." cols={famCols} rows={[]} itemsLabel="Families per page" rowKey={(b) => b.family} />

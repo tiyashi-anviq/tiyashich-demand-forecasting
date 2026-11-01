@@ -7,6 +7,7 @@ import { useFilters, type Options } from '../lib/filters'
 import { FilterBar } from '../ui/FilterBar'
 import { NeedsData } from '../ui/NeedsData'
 import Outlook from './forecast/Outlook'
+import Scenario from './forecast/Scenario'
 import Vintages from './forecast/Vintages'
 
 export default function Forecasts() {
@@ -21,7 +22,8 @@ export default function Forecasts() {
       <NeedsData base="forecast" building={{ what: 'build the forecasts', how: 'This takes a few minutes the first time because every forecast is replayed as it would have looked in the past. It is kept afterwards.' }}>
         <TabbedView tabs={[
           { id: 'outlook', label: 'Outlook to Dec 2027', content: <Outlook f={f} onClear={reset} /> },
-          ...(['M3', 'M2', 'M1'] as const).map((r) => ({ id: r.toLowerCase(), label: r, content: <Vintages f={f} onClear={reset} only={r} /> })),
+          { id: 'scenario', label: 'Scenario controls', content: <Scenario f={f} onClear={reset} /> },
+          ...(['M1', 'M2', 'M3'] as const).map((r) => ({ id: r.toLowerCase(), label: r, content: <Vintages f={f} onClear={reset} only={r} /> })),
         ]} />
       </NeedsData>
     </>

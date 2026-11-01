@@ -91,20 +91,20 @@ export default function Drivers({ f, opts, onClear }: { f: Filters; opts: Option
               ]} />
               <ChartCard title="Ablation Analysis" subtitle="Change in test error when a feature group is removed; positive means the group helps." label="Ablation study"
                 headers={['Group', 'Error without (%)', 'Change']} rows={v.ablation.map((a: any) => [a.label, fmtPct(a.monthly_wape, 1), pts(a.wape_change)])}
-                chart={<BarsChart horizontal barThickness={16} items={v.ablation.map((a: any) => ({ label: a.label, value: a.wape_change * 100, tone: a.wape_change > 0.0005 ? 1 : 8 }))} yTitle="Error change (pts)" fmt={(n) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`} label="Ablation study" />}
+                chart={<BarsChart horizontal barThickness={16} items={v.ablation.map((a: any) => ({ label: a.label, value: a.wape_change * 100, tone: a.wape_change > 0.0005 ? 1 : 8 }))} yTitle="Error change (pts)" xTitle="Feature group" fmt={(n) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`} label="Ablation study" />}
                 note="A group with no increase in holdout error may add little predictive value." />
             </PageSection>
 
             <PageSection title="What influences demand" note="See which feature groups matter, then select an individual feature to inspect its response curve.">
               <ChartCard title="Feature Group Importance" subtitle="Share of model attribution by covariate group (SHAP)" label="Feature importance"
                 headers={['Group', 'Share (%)']} rows={d.groups.map((g: any) => [g.label, fmtPct(g.share, 1)])}
-                chart={<BarsChart horizontal barThickness={20} items={d.groups.map((g: any) => ({ label: GROUP_CHART_LABEL[g.group] ?? g.label, value: g.share, tone: g.group === 'identity' ? 8 : 1 }))} yTitle="Share (%)" fmt={(n) => fmtPct(n, 0)} label="Feature importance" />} />
+                chart={<BarsChart horizontal barThickness={20} items={d.groups.map((g: any) => ({ label: GROUP_CHART_LABEL[g.group] ?? g.label, value: g.share, tone: g.group === 'identity' ? 8 : 1 }))} yTitle="Share (%)" xTitle="Feature group" fmt={(n) => fmtPct(n, 0)} label="Feature importance" />} />
               <DataCard id="rank" title="Feature Rankings" description="Select a row to update the response curve. Verdicts are guidelines, not rules."
                 cols={rankCols} rows={rows} itemsLabel="Covariates per page" rowKey={(r) => r.id} onRow={(r) => setFeature(r.id)} selected={(r) => r.id === d.feature} defaultOpen
                 note="SHAP measures feature impact on predictions; mutual information captures nonlinear relationships; effect compares high and low ranges." />
               <ChartCard title={`Demand response: ${resp.label}`} subtitle="Demand relative to each series' usual level, across ranges of the selected feature." label={`Demand response to ${resp.label.toLowerCase()}`}
                 headers={['Range', ...resp.series.map((s: any) => s.name)]} rows={resp.x.map((x: string, i: number) => [x, ...resp.series.map((s: any) => fmtSigned(s.values[i], 1))])}
-                chart={resp.series.length ? <TrendChart kind="labels" x={resp.x} series={resp.series.map((s: any, k: number) => ({ name: s.name, values: s.values, tone: (k + 1) as any }))} yTitle="Against the usual level (%)" yFmt={(n) => fmtSigned(n, 0)} zero={false} label={`Demand response to ${resp.label.toLowerCase()}`} pointsAlways />
+                chart={resp.series.length ? <TrendChart kind="labels" x={resp.x} series={resp.series.map((s: any, k: number) => ({ name: s.name, values: s.values, tone: (k + 1) as any }))} xTitle={`${resp.label} range`} yTitle="Against the usual level (%)" yFmt={(n) => fmtSigned(n, 0)} zero={false} label={`Demand response to ${resp.label.toLowerCase()}`} pointsAlways />
                   : <p className="supporting">Not enough data to draw this.</p>} />
             </PageSection>
 
@@ -114,11 +114,11 @@ export default function Drivers({ f, opts, onClear }: { f: Filters; opts: Option
                   toolbar={<ContentSwitcher size="sm" selectedIndex={lagMode === 'adjusted' ? 0 : 1} onChange={({ index = 0 }) => setLagMode(index === 0 ? 'adjusted' : 'raw')}>
                     <Switch name="adjusted" text="Without seasonality" /><Switch name="raw" text="As is" /></ContentSwitcher>}
                   headers={['Covariate', ...lagHead]} rows={lag.rows.map((r: any) => [r.label, ...r[lagMode].map((x: number | null) => (x === null ? '' : x.toFixed(2)))])}
-                  chart={<HeatChart rows={lag.rows.map((r: any) => r.label)} cols={lagHead} values={lag.rows.map((r: any) => r[lagMode])} diverging domain={[-0.5, 0.5]} fmt={(n) => n.toFixed(1)} legendTitle="Correlation" legendTicks={Array.from({ length: 11 }, (_, i) => Number((-0.5 + i * 0.1).toFixed(1)))} label="Correlation of each covariate with demand at each lag" />}
+                  chart={<HeatChart rows={lag.rows.map((r: any) => r.label)} cols={lagHead} values={lag.rows.map((r: any) => r[lagMode])} rowTitle="Covariate" columnTitle="Demand lag" diverging softDiverging domain={[-0.5, 0.5]} fmt={(n) => n.toFixed(1)} legendTitle="Correlation" legendTicks={Array.from({ length: 11 }, (_, i) => Number((-0.5 + i * 0.1).toFixed(1)))} label="Correlation of each covariate with demand at each lag" />}
                   note={`${lagMode === 'adjusted' ? 'The usual seasonal pattern is removed from both sides to highlight short-run relationships.' : 'Seasonal patterns remain, so correlations may reflect shared seasonality.'} Strongest lag: ${bestNote}.`} />
                 <ChartCard title="Does the Diwali run-up show in the data?" subtitle="Average demand by week relative to Diwali (negative is before), against the reference index in your data pack" label="Demand by week relative to Diwali"
                   headers={['Weeks from Diwali', ...evSeries.map((s: any) => s.name)]} rows={ev.weeks.map((w: number, i: number) => [w, ...evSeries.map((s: any) => (s.values[i] === null || s.values[i] === undefined ? '' : s.values[i].toFixed(2)))])}
-                  chart={<TrendChart kind="labels" x={ev.weeks.map((w: number) => String(w))} series={evSeries} yTitle="Demand against the usual level (index)" yFmt={(n) => n.toFixed(2)} zero={false} label="Demand by week relative to Diwali" />}
+                  chart={<TrendChart kind="labels" x={ev.weeks.map((w: number) => String(w))} series={evSeries} xTitle="Weeks from Diwali" yTitle="Demand against the usual level (index)" yFmt={(n) => n.toFixed(2)} zero={false} label="Demand by week relative to Diwali" />}
                   note="Reference lines are the pattern your data pack says to expect. If they differ from what happened, the model needs a sharper Diwali feature than a simple window." />
               </div>
             </PageSection>
@@ -130,7 +130,7 @@ export default function Drivers({ f, opts, onClear }: { f: Filters; opts: Option
                   note="Shows how rainfall correlates with battery orders. After removing seasonal patterns, correlation drops (last column), confirming both follow monsoon calendar." />
                 <ChartCard title="Which covariates repeat each other?" subtitle="Correlation among the 12 leading covariates. Pairs near ±1 carry the same information." label="Correlation among the leading covariates"
                   headers={['Covariate', ...d.collinearity.labels]} rows={d.collinearity.matrix.map((r: number[], i: number) => [d.collinearity.labels[i], ...r.map((x) => x.toFixed(2))])}
-                  chart={<HeatChart rows={d.collinearity.labels} cols={d.collinearity.labels.map((_: string, i: number) => String(i + 1))} values={d.collinearity.matrix} diverging domain={[-1, 1]} fmt={(n) => n.toFixed(2)} legendTitle="Correlation" label="Correlation among the leading covariates" />}
+                  chart={<HeatChart rows={d.collinearity.labels} cols={d.collinearity.labels.map((_: string, i: number) => String(i + 1))} values={d.collinearity.matrix} rowTitle="Covariate" columnTitle="Covariate index" diverging softDiverging domain={[-1, 1]} fmt={(n) => n.toFixed(2)} legendTitle="Correlation" label="Correlation among the leading covariates" />}
                   note="Columns are numbered in the order of the rows; the table view names them." />
               </div>
             </PageSection>

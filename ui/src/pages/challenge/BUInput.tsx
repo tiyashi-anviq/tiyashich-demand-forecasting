@@ -8,7 +8,7 @@ import { fmtInt } from '../../lib/format'
 import type { Options } from '../../lib/filters'
 import { BuPanel } from './Regions'
 
-/** Simplified workflow for BU Head: Select Family → Review → Respond */
+/** Simplified workflow for a channel head: Select Family → Review → Respond */
 export function BUInput({ month, unit, options, onDone, stamp }: {
   month: string
   unit: { bu: string; name: string }

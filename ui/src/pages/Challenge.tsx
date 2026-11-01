@@ -16,7 +16,7 @@ import { BUWorkspace, SDWorkspace } from './challenge/Workspaces'
 const TABS = [
   { id: 'regional', label: '1 · Regional Head' },
   { id: 'sd', label: '2 · S&D Head' },
-  { id: 'bu', label: '3 · BU Unit' },
+  { id: 'bu', label: '3 · Channel Head (BU Head)' },
   { id: 'final', label: '4 · Final Values' },
 ] as const
 type Tab = (typeof TABS)[number]['id']
@@ -64,7 +64,7 @@ export default function Challenge() {
       <ModulePageHeader
         moduleLabel={MODULE}
         title="Forecast challenge"
-        description="The Regional Head submits a number, the S&D Head reviews it and sends it to the BU heads, each BU head agrees it, and the agreed number becomes the final forecast."
+        description="The Regional Head submits a number, the S&D Head reviews it and sends it to the channel heads (BU heads), who agree the channel forecast before it becomes final."
         toolbar={toolbar}
       />
       <NeedsData base="forecast" building={{ what: 'build the forecasts', how: 'The challenge starts from the model forecast, so it waits for the forecasts to finish.' }}>
@@ -105,7 +105,7 @@ export default function Challenge() {
                 },
                 {
                   id: 'bu',
-                  label: '3 · BU Unit',
+                  label: '3 · Channel Head (BU Head)',
                   content: unit ? (
                     <BUWorkspace 
                       key={`bu|${unit.bu}`} 
@@ -118,7 +118,7 @@ export default function Challenge() {
                       onBuChange={(bu) => set({ bu })}
                     />
                   ) : (
-                    <p className="supporting">No business units were found in the data.</p>
+                    <p className="supporting">No channels were found in the data.</p>
                   ),
                 },
                 {
@@ -138,7 +138,7 @@ export default function Challenge() {
               ]}
             />
             <p className="footnote">
-              A family reaches Final Values once the S&D Head has sent it to the business units and every BU head has
+              A family reaches Final Values once the S&D Head has sent it to the channel heads (BU heads) and each channel has
               agreed. Those numbers are what the Supply and production plan and Procurement use.
             </p>
           </div>

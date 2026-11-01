@@ -16,7 +16,7 @@ const monthLabel = (m: string, shift = 0) => {
   return new Date(Date.UTC(y, mo - 1 + shift, 1)).toLocaleString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
 
-/** The numbers agreed by the Regional Head, the S&D Head and the BU Heads. Shows final vs model comparison and the
+/** The numbers agreed by the Regional Head, the S&D Head and the channel heads. Shows final vs model comparison and the
  *  negotiation history. These are the numbers the Supply and production plan and Procurement pick up. */
 export function FinalNumbers({ month, stamp, role, region, unit }: {
   month: string
@@ -66,7 +66,6 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
   const lineCols: Col<any>[] = [
     { header: 'Family', cell: (r) => r.family, sort: (r) => r.family },
     { header: 'Region', cell: (r) => r.region, sort: (r) => r.region },
-    { header: 'Business unit', cell: (r) => r.bu_name, sort: (r) => r.bu_name },
     { header: 'Channel', cell: (r) => (r.channel_name && r.channel_name !== r.channel ? `${r.channel_name} (${r.channel})` : r.channel), sort: (r) => r.channel },
     { header: 'SKU', cell: (r) => r.sku, sort: (r) => r.sku },
     { header: 'Description', cell: (r) => r.description || '–' },
@@ -95,7 +94,7 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
     { header: 'When', cell: (r) => new Date(r.at * 1000).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }), sort: (r) => r.at },
     { header: 'Month', cell: (r) => r.month, sort: (r) => r.month },
     { header: 'Family', cell: (r) => r.family, sort: (r) => r.family },
-    { header: 'Business unit', cell: (r) => r.bu ?? '–' },
+    { header: 'Channel', cell: (r) => r.bu ?? '–' },
     { header: 'Who', cell: (r) => r.who },
     { header: 'What', cell: (r) => r.what },
     { header: 'Number (units)', num: true, cell: (r) => fmtInt(r.qty), sort: (r) => r.qty },
@@ -154,7 +153,7 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
               {fmtInt(scopeTotal)} units · {d.lines.length} product{d.lines.length === 1 ? '' : 's'} across {scopedFamilies.size} famil{scopedFamilies.size === 1 ? 'y' : 'ies'}
             </p>
             <p className="supporting">
-              BU heads have agreed these numbers. Click to apply filters. They are available for Supply and Procurement to use immediately, even while other BUs are still reviewing.
+              Channel heads (BU heads) have agreed these numbers. Click to apply filters. They are available for Supply and Procurement to use immediately, even while other channels are still reviewing.
             </p>
           </div>
           
@@ -170,11 +169,11 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
             )}
             {isBu ? (
               <div className="filter-fixed">
-                <span className="cds--label">Business unit</span>
+                <span className="cds--label">Channel</span>
                 <Tag size="md" type="purple">{unit?.bu ?? fixedBu}</Tag>
               </div>
             ) : (
-              <Dropdown id="fin-b" size="md" titleText="Business unit" label="Business unit" items={['All business units', ...bus.map(([id]) => id)]} itemToString={(i: string | null) => i ?? ''} selectedItem={bu ?? 'All business units'} onChange={({ selectedItem }) => setBu(selectedItem === 'All business units' ? null : selectedItem)} />
+              <Dropdown id="fin-b" size="md" titleText="Channel" label="Channel" items={['All channels', ...bus.map(([id]) => id)]} itemToString={(i: string | null) => i === 'All channels' ? i : bus.find(([id]) => id === i)?.[1] ?? i ?? ''} selectedItem={bu ?? 'All channels'} onChange={({ selectedItem }) => setBu(selectedItem === 'All channels' ? null : selectedItem)} />
             )}
             <Dropdown id="fin-f" size="md" titleText="Product family" label="Product family" items={['All families', ...families]} itemToString={(i: string | null) => i ?? ''} selectedItem={fam ?? 'All families'} onChange={({ selectedItem }) => setFam(selectedItem === 'All families' ? null : selectedItem)} />
             <Dropdown id="fin-p" size="md" titleText="Product" label="Product" items={['All products', ...products]} itemToString={(i: string | null) => i ?? ''} selectedItem={prod ?? 'All products'} onChange={({ selectedItem }) => setProd(selectedItem === 'All products' ? null : selectedItem)} disabled={!fam} />
@@ -184,10 +183,10 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
           <DataCard 
             id="available-now-table" 
             title="Agreed products" 
-            description="Products with quantities agreed by BU heads, ready for Supply and Procurement"
+            description="Products with quantities agreed by channel heads, ready for Supply and Procurement"
             cols={[
               { header: 'Region', cell: (r: any) => r.region, sort: (r: any) => r.region },
-              { header: 'Business Unit', cell: (r: any) => r.bu, sort: (r: any) => r.bu },
+              { header: 'Channel', cell: (r: any) => r.bu, sort: (r: any) => r.bu },
               { header: 'Family', cell: (r: any) => r.family, sort: (r: any) => r.family },
               { header: 'Product', cell: (r: any) => `${r.sku} · ${r.description}`, sort: (r: any) => r.sku },
               { header: 'Agreed (units)', num: true, cell: (r: any) => fmtInt(r.qty), sort: (r: any) => r.qty },
@@ -207,8 +206,8 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
           ? `${d.lines.length} products ready for handoff`
           : 'No products ready yet'}
         subtitle={d.lines.length > 0
-          ? 'These products were agreed by Regional Head, S&D Head, and BU Head. They are confirmed at all three levels and ready for Supply and Procurement.'
-          : 'Products appear here once Regional Head submits, S&D Head accepts, and BU Head agrees.'} />
+          ? 'These products were agreed by Regional Head, S&D Head, and the channel head (BU head). They are confirmed at all three levels and ready for Supply and Procurement.'
+          : 'Products appear here once Regional Head submits, S&D Head accepts, and the channel head agrees.'} />
 
       {d.lines.length > 0 && (
         <Tile className="card">
@@ -217,11 +216,11 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
             <strong>{fmtInt(scopeTotal)} units</strong> across <strong>{d.lines.length} products</strong> in <strong>{scopedFamilies.size} famil{scopedFamilies.size === 1 ? 'y' : 'ies'}</strong> are ready to plan on.
           </p>
           <p className="supporting">
-            These products have been confirmed by all three levels (Regional Head → S&D Head → BU Head) for specific Region × BU × Family combinations. They are final and ready for planning.
+            These products have been confirmed by all three levels (Regional Head → S&D Head → channel head) for specific Region × Channel × Family combinations. They are final and ready for planning.
           </p>
           {done.length > 0 && (
             <p className="supporting">
-              <strong>Note:</strong> {done.length} famil{done.length === 1 ? 'y is' : 'ies are'} fully agreed across all regions and BUs.
+              <strong>Note:</strong> {done.length} famil{done.length === 1 ? 'y is' : 'ies are'} fully agreed across all regions and channels.
             </p>
           )}
           <p className="supporting">
@@ -235,7 +234,7 @@ export function FinalNumbers({ month, stamp, role, region, unit }: {
       <DataCard id="fin-fam" title="Families" description="Where each family stands and whether its value is final" cols={famCols} rows={d.families} itemsLabel="Families per page" rowKey={(r) => r.family} />
 
       {d.lines.length > 0 && (
-        <DataCard id="fin-lines" title="Final values by product" description="Products agreed by BU heads and ready for Supply and Procurement. Includes partial agreements where some BUs have agreed." cols={lineCols} rows={lines} itemsLabel="Lines per page" rowKey={(r) => `${r.family}|${r.key}`} defaultSort={{ col: 8, dir: 'desc' }} />
+        <DataCard id="fin-lines" title="Final values by product" description="Products agreed by channel heads and ready for Supply and Procurement. Includes partial agreements where some channels have agreed." cols={lineCols} rows={lines} itemsLabel="Lines per page" rowKey={(r) => `${r.family}|${r.key}`} defaultSort={{ col: 7, dir: 'desc' }} />
       )}
 
       {activityRows.length > 0 && (

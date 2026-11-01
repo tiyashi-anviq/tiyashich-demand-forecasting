@@ -17,7 +17,7 @@ export function Delta({ value, text }: { value: number | null | undefined; text:
 export function StatRow({ items }: { items: Stat[] }) {
   return (
     <div className="kpi-grid">
-      {items.map((s) => <StatTile key={s.label} label={s.info ? <>{s.label}<Info text={s.info} label={`About ${s.label}`} /></> : s.label} value={s.value} sublabel={s.sublabel} />)}
+      {items.map((s) => <StatTile key={s.label} label={s.info ? <span className="kpi-label-content"><span className="kpi-label-text">{s.label}</span><Info text={s.info} label={`About ${s.label}`} /></span> : s.label} value={s.value} sublabel={s.sublabel} />)}
     </div>
   )
 }

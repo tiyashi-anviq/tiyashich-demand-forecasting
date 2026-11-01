@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ComboBox, ContentSwitcher, Dropdown, Switch, Tag } from '@reiq/ui/carbon'
 import { NumField } from '../../ui/NumField'
+import { Info } from '../../ui/Info'
 import { getJson } from '../../lib/http'
 import { fmtN } from '../../lib/format'
 import { ViewShell } from '../../ui/ViewShell'
@@ -80,9 +81,36 @@ export default function Planner() {
             {dd('np-c', 'Sales channel', [ALL, ...o.channels], channel, setChannel)}
           </div>
           <div className="row-03">
-            <NumField id="np-nd" label="Reach (% of the best-covered brand's)" min={5} max={100} step={5} value={nd} onChange={setNd} />
-            <NumField id="np-sc" label="Trade scheme at launch (% discount)" min={0} max={20} step={0.5} value={scheme} onChange={setScheme} />
-            {dd('np-e', 'Price sensitivity of buyers', o.sensitivity, sens, setSens)}
+            <NumField
+              id="np-nd"
+              label="Reach (% of the best-covered brand's)"
+              labelInfo="The best-covered brand is the brand stocked in the most stores in this category. This percentage sets the new product's assumed store reach relative to that brand: 100% matches its reach; 50% means half as many stores. For example, if the leading brand is stocked in 1,000 stores, a 60% reach assumes this product is stocked in about 600. It affects estimated sales; it is not a guarantee."
+              min={5}
+              max={100}
+              step={5}
+              value={nd}
+              onChange={setNd}
+            />
+            <NumField
+              id="np-sc"
+              label="Trade scheme at launch (% discount)"
+              labelInfo="The launch discount offered to trade. For an existing product family, the estimate adjusts from its average historical discount using the sales response seen in that family's data. For example, if the historical average is 5% and you enter 8%, the estimate uses the observed response to a 3-point increase. If comparable promotion history is unavailable, the estimate may not change much. This is a modeled assumption, not a guaranteed sales lift."
+              min={0}
+              max={20}
+              step={0.5}
+              value={scheme}
+              onChange={setScheme}
+            />
+            <Dropdown
+              id="np-e"
+              size="md"
+              titleText={<>Price sensitivity of buyers<Info text="This is the assumed response of demand to price changes in the market estimate. Low uses a smaller response, Medium the default, and High a stronger response: a price above the category average reduces estimated demand more when sensitivity is higher. For example, at ₹120 against a ₹100 category average, High sensitivity reduces estimated demand more than Low sensitivity. It is a modeling assumption, not a measured result for this specific launch." label="About price sensitivity of buyers" /></>}
+              label="Price sensitivity of buyers"
+              items={o.sensitivity}
+              itemToString={(i: string | null) => i ?? ''}
+              selectedItem={sens}
+              onChange={({ selectedItem }: any) => selectedItem && setSens(selectedItem)}
+            />
           </div>
         </>
       ) : null}
@@ -112,7 +140,7 @@ export default function Planner() {
                     </div>
                   ),
                   sublabel: `Price at ${e.price_index.toFixed(2)}× category average`,
-                  info: 'Positioning based on price vs market average and reach'
+                  info: 'Positioning based on price vs market average and reach. For example, a ₹120 product in a category averaging ₹100 is priced at 1.2× the average, which places it in the premium position.'
                 },
               ] : [
                 { label: 'Expected weekly sales once settled (units)', value: fmtN(d.blend), sublabel: 'From Eveready\'s own range. Est.' },
@@ -127,7 +155,7 @@ export default function Planner() {
                     </div>
                   ) : '–', 
                   sublabel: d.matches[0] ? 'Based on family, sub-category, and price match' : 'No matches found',
-                  info: 'Similarity score: Family (50 pts), Sub-category (30 pts), Price (20 pts)'
+                  info: 'Similarity score: Family (50 pts), Sub-category (30 pts), Price (20 pts). For example, a product in the same family and sub-category with a similar price can score close to 100; a different family loses the 50 family points.'
                 },
               ]} />
               {/* Similarity Index Card - shown for BOTH modes */}
@@ -351,7 +379,7 @@ export default function Planner() {
                 </div>
               ) : null}
 
-              <ChartCard title="Simulated sales after launch" info="The expected weekly sales once settled, shaped by how comparable launches built up over their first 12 months. The band is the quieter to the busier of the closest products." subtitle={`Launching in ${d.month}. Units per week`}
+              <ChartCard title="Simulated sales after launch" info="The expected weekly sales once settled, shaped by how comparable launches built up over their first 12 months. The band is the quieter to the busier of the closest products. For example, if the settled estimate is 100 units a week and comparable launches reached 40% of settled sales in month one, the first-month estimate is about 40 units a week." subtitle={`Launching in ${d.month}. Units per week`}
                 chart={<TrendChart kind="labels" zero x={d.sim.months} series={[
                   { name: 'Expected', values: d.sim.expected, tone: 1 },
                   { name: 'Quieter case', values: d.sim.low, tone: 5 },

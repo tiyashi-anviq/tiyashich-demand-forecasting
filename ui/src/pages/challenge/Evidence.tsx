@@ -77,8 +77,8 @@ export function Evidence({ month, family, now }: { month: string; family: string
     { header: 'Over (+) or under (-) forecast (%)', num: true, cell: (r) => fmtSigned(r.bias, 1), sort: (r) => r.bias },
   ]
   const trackCols: Col<any>[] = [
-    { header: 'Region or unit', cell: (r) => r.name, sort: (r) => String(r.name).toLowerCase() },
-    { header: 'Kind', cell: (r) => r.dim },
+    { header: 'Region or channel', cell: (r) => r.name, sort: (r) => String(r.name).toLowerCase() },
+    { header: 'Kind', cell: (r) => (r.dim === 'bu' || r.dim === 'business unit' ? 'Channel' : r.dim) },
     { header: 'Model accuracy (%)', num: true, cell: (r) => fmtPct(acc(r.model.wape), 1), sort: (r) => acc(r.model.wape) },
     { header: 'Sales team accuracy (%)', num: true, cell: (r) => fmtPct(acc(r.team.wape), 1), sort: (r) => acc(r.team.wape) },
     { header: 'Sales team over (+) or under (-) (%)', num: true, cell: (r) => fmtSigned(r.team.bias, 1), sort: (r) => r.team.bias },
@@ -156,9 +156,9 @@ export function Evidence({ month, family, now }: { month: string; family: string
         cols={relCols} rows={d.reliability} itemsLabel="Sources per page" rowKey={(r) => r.source} defaultSort={{ col: 1, dir: 'desc' }}
         note="Sales team and budget are scored on the forecast-versions file, which is on a different scale from the app's orders, so only the percentages compare." />
 
-      <DataCard id="trk" title="Track record by region and business unit" description="Who has been closest, and who leans high or low, for this family at this lead time" cols={trackCols} rows={d.track} itemsLabel="Rows per page" rowKey={(r) => `${r.dim}|${r.name}`} defaultSort={{ col: 0, dir: 'asc' }} />
+      <DataCard id="trk" title="Track record by region and channel" description="Who has been closest, and who leans high or low, for this family at this lead time" cols={trackCols} rows={d.track} itemsLabel="Rows per page" rowKey={(r) => `${r.dim}|${r.name}`} defaultSort={{ col: 0, dir: 'asc' }} />
 
-      <DataCard id="grid" title="The model, region by business unit" description={`${monthLong(month)}: where the model puts ${family} demand`} cols={gridCols} rows={d.grid} itemsLabel="Regions per page" rowKey={(r) => r.region} />
+      <DataCard id="grid" title="The model, region by channel" description={`${monthLong(month)}: where the model puts ${family} demand`} cols={gridCols} rows={d.grid} itemsLabel="Regions per page" rowKey={(r) => r.region} />
 
       <DataCard id="sku" title="The SKUs behind the number" description="The ten largest, by the last three months. The model is split by each SKU's recent share" cols={skuCols} rows={d.skus} itemsLabel="SKUs per page" rowKey={(r) => r.sku} defaultSort={{ col: 2, dir: 'desc' }} />
 

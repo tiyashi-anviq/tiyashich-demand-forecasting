@@ -25,7 +25,7 @@ export default function Overview({ f, opts, onClear }: { f: Filters; opts: Optio
           return (
             <ChartCard title={title} subtitle={`Units of ${k.measure_label.toLowerCase()}`} label={`${k.measure_label} by ${head.toLowerCase()}`}
               headers={[head, 'Units', 'Share (%)']} rows={d[key].map((x: any) => [x.k, Math.round(x.v), fmtPct(x.v / k.volume, 1)])}
-              chart={<BarsChart items={items} horizontal yTitle={`${k.measure_label} (units)`} fmt={(n) => fmtN(n)} label={`${k.measure_label} by ${head.toLowerCase()}`} />} />
+              chart={<BarsChart items={items} horizontal yTitle={`${k.measure_label} (units)`} xTitle={head} fmt={(n) => fmtN(n)} label={`${k.measure_label} by ${head.toLowerCase()}`} />} />
           )
         }
         return (

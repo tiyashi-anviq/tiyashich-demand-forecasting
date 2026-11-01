@@ -22,11 +22,11 @@ function stageOf(it: any): { label: string; type: 'gray' | 'blue' | 'teal' | 'gr
   if (it.status === 'agreed') return { label: 'Agreed — final', type: 'green' }
   if (it.consolidated === null) return { label: 'Collecting regions', type: 'gray' }
   if (it.bus.some((b: any) => b.status === 'negotiating' && b.turn === 'sd')) return { label: 'With the S&D Head', type: 'teal' }
-  return { label: 'With the BU heads', type: 'blue' }
+  return { label: 'With the channel heads', type: 'blue' }
 }
 
 /** Step 2: what the S&D Head acts on. One queue of everything waiting for an answer — a Regional Head's submission
- *  or a BU Head's counter — and one row per family to open the conversation or send it to the units. */
+ *  or a channel head's counter — and one row per family to open the conversation or send it to the channels. */
 export function SDWorkspace({ cycle, month, options, onDone }: {
   cycle: any
   month: string
@@ -48,7 +48,7 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
     : allProductOpts
   const products = productOpts.map((p: any) => p.id).filter(Boolean)
 
-  // The filters the S&D Head works with: a region, a business unit, or a product family narrows the queue.
+  // The filters the S&D Head works with: a region, a channel, or a product family narrows the queue.
   const rows = items.filter((it: any) => {
     if (fFam && it.family !== fFam) return false
     if (fBu && !(it.bus ?? []).some((b: any) => b.bu === fBu)) return false
@@ -59,10 +59,10 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
   const send = useMutation({
     mutationFn: (family: string) => sendJson<any>('/api/challenge/consolidate', 'POST', { month, family }),
     onSuccess: (c, family) => {
-      showToast('success', `✓ ${family} sent to the BU heads`, 'Open the BU Unit tab to agree it with each unit.')
+      showToast('success', `✓ ${family} sent to the channel heads`, 'Open the Channel Head tab to agree each channel.')
       onDone(c)
     },
-    onError: (e: any) => showToast('error', 'Could not send it to the BU heads', e?.message ?? 'Please try again.'),
+    onError: (e: any) => showToast('error', 'Could not send it to the channel heads', e?.message ?? 'Please try again.'),
   })
 
   // Removed the separate view - now negotiation shows inline below filters
@@ -154,7 +154,7 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
 
   const cols: Col<any>[] = [
     { header: 'Product family', cell: (r) => r.family, sort: (r) => r.family },
-    { header: 'Step', cell: (r) => (r.consolidated === null ? 'Regions' : 'Business units'), sort: (r) => (r.consolidated === null ? 0 : 1) },
+    { header: 'Step', cell: (r) => (r.consolidated === null ? 'Regions' : 'Channels'), sort: (r) => (r.consolidated === null ? 0 : 1) },
     { header: 'On the table (units)', num: true, cell: (r) => fmtInt(r.consolidated ?? r.regional_total), sort: (r) => r.consolidated ?? r.regional_total },
     { header: 'Status', cell: (r) => { const s = stageOf(r); return <Tag size="sm" type={s.type}>{s.label}</Tag> }, sort: (r) => stageOf(r).label },
     {
@@ -163,7 +163,7 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
         <div className="row-03">
           {r.consolidated === null && r.regional.some((x: any) => !x.simulated) ? (
             <Button kind="primary" size="sm" disabled={send.isPending} onClick={() => send.mutate(r.family)}>
-              Send to BU heads
+              Send to channel heads
             </Button>
           ) : null}
         </div>
@@ -183,7 +183,7 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
           {fReg || fBu || fFam ? (
             <>
               {fReg ? fReg : 'All regions'}
-              {fBu ? ` · ${fBu}` : ''}
+              {fBu ? ` · ${cycle.units?.find((u: any) => u.bu === fBu)?.name ?? fBu}` : ''}
               {fFam ? ` · ${fFam}` : ' · All families'}
             </>
           ) : 'All families and regions'} · {thisLabel}
@@ -238,7 +238,7 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
           lowContrast
           hideCloseButton
           title="Nothing is waiting for you."
-          subtitle="When a Regional Head submits a number, or a BU Head counters, it appears here."
+          subtitle="When a Regional Head submits a number, or a channel head (BU head) counters, it appears here."
         />
       )}
 
@@ -256,10 +256,10 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
         <Dropdown
           id="sd-f-bu"
           size="md"
-          titleText="Business unit"
-          label="Business unit"
+          titleText="Channel"
+          label="Channel"
           items={cycle.units?.map((u: any) => u.bu) ?? []}
-          itemToString={(i: string | null) => i ?? ''}
+          itemToString={(i: string | null) => cycle.units?.find((u: any) => u.bu === i)?.name ?? i ?? ''}
           selectedItem={fBu}
           onChange={({ selectedItem }) => setFBu(selectedItem)}
         />
@@ -293,7 +293,7 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
       <DataCard
         id="sd-families"
         title="Product families"
-        description="Open a family to agree the numbers. Send to BU heads moves it on to the business unit conversation."
+        description="Open a family to agree the numbers. Sending it moves it on to the channel conversations."
         cols={cols}
         rows={rows}
         itemsLabel="Families per page"
@@ -329,7 +329,7 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
     mutationFn: (body: any) => sendJson<any>('/api/challenge/region/respond', 'POST', { month, family, region, ...body }),
     onSuccess: (_c, vars) => {
       const action = vars.action === 'counter' ? 'countered' : 'accepted'
-      showToast('success', `✓ ${region} - ${family} ${action}!`, reason || 'Forwarding to BU heads')
+      showToast('success', `✓ ${region} - ${family} ${action}!`, reason || 'Forwarding to channel heads')
       q.refetch()
       setDraft({})
       setReason('')
@@ -368,7 +368,6 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
   const total = filteredRows.reduce((sum: number, r: any) => sum + val(r), 0)
 
   const cols: Col<any>[] = [
-    { header: 'Business Unit', cell: (r) => r.bu, sort: (r) => r.bu },
     { header: 'Channel', cell: (r) => r.channel, sort: (r) => r.channel },
     { header: 'Product', cell: (r) => `${r.sku} · ${r.description}`, sort: (r) => r.sku },
     { header: 'Regional (units)', num: true, cell: (r) => fmtInt(r.submitted), sort: (r) => r.submitted },
@@ -442,7 +441,7 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
   )
 }
 
-/** Step 3: one BU Head's view. Their own families, whether it is their turn, and the conversation with the S&D Head. */
+/** Step 3: one channel head's view. Their own families, whether it is their turn, and the conversation with the S&D Head. */
 export function BUWorkspace({ cycle, month, unit, options, stamp, onDone, onBuChange }: {
   cycle: any
   month: string
@@ -554,7 +553,7 @@ export function BUWorkspace({ cycle, month, unit, options, stamp, onDone, onBuCh
           lowContrast
           hideCloseButton
           title="Nothing is waiting for you."
-          subtitle="A family appears here once the S&D Head sends it to the business units."
+          subtitle="A family appears here once the S&D Head sends it to the channels."
         />
       )}
 
@@ -572,10 +571,10 @@ export function BUWorkspace({ cycle, month, unit, options, stamp, onDone, onBuCh
         <Dropdown
           id="bu-f-bu"
           size="md"
-          titleText="Business unit"
-          label="Business unit"
+          titleText="Channel"
+          label="Channel"
           items={cycle.units?.map((u: any) => u.bu) ?? []}
-          itemToString={(i: string | null) => i ?? ''}
+          itemToString={(i: string | null) => cycle.units?.find((u: any) => u.bu === i)?.name ?? i ?? ''}
           selectedItem={unit.bu}
           onChange={({ selectedItem }) => selectedItem && onBuChange?.(selectedItem)}
         />
@@ -622,7 +621,7 @@ export function BUWorkspace({ cycle, month, unit, options, stamp, onDone, onBuCh
       <DataCard
         id="bu-families"
         title={`${unit.name}: product families`}
-        description={`${unit.head}. Channels: ${unit.channels.join(', ')}.`}
+        description={`${unit.head}. Channel: ${unit.channels.join(', ')}.`}
         cols={cols}
         rows={rows}
         itemsLabel="Families per page"

@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { NumberInput } from '@reiq/ui/carbon'
+import { Info } from './Info'
 
 /** A number you can type into freely: what you type is kept as text while you edit (so you can clear it and retype),
  *  the value is passed on as soon as it is inside the range, and on leaving the box it snaps into the range. */
-export function NumField({ id, label, value, onChange, min, max, step = 1, helperText }: {
-  id: string; label: string; value: number; onChange: (n: number) => void; min: number; max: number; step?: number; helperText?: string
+export function NumField({ id, label, value, onChange, min, max, step = 1, helperText, labelInfo }: {
+  id: string; label: string; value: number; onChange: (n: number) => void; min: number; max: number; step?: number; helperText?: string; labelInfo?: string
 }) {
   const [txt, setTxt] = useState(String(value))
   useEffect(() => { setTxt(String(value)) }, [value])
   const n = Number(txt)
   const bad = txt !== '' && (Number.isNaN(n) || n < min || n > max)
   return (
-    <NumberInput id={id} size="md" label={label} helperText={helperText} hideSteppers min={min} max={max} step={step} value={txt}
+    <NumberInput id={id} size="md" label={labelInfo ? <>{label}<Info text={labelInfo} label={`About ${label}`} /></> : label} helperText={helperText} hideSteppers min={min} max={max} step={step} value={txt}
       invalid={bad} invalidText={`Enter a number from ${min} to ${max}`}
       onChange={(_e: unknown, { value: v }: { value: number | string }) => {
         setTxt(String(v))

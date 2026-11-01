@@ -8,6 +8,7 @@ from .. import store
 from ..eda import panel as P
 
 BUFFERS = (1, 2, 3)
+QC_CATEGORIES = frozenset({"Batteries", "Flashlights", "Mobile Accessories", "Mosquito Care"})
 
 
 def _tables():
@@ -26,6 +27,7 @@ def _split(s):
 
 def options() -> dict:
     q, _, _ = _tables()
+    q = q[q["category"].isin(QC_CATEGORIES)]
     ws = store.read_workspace() or {}
     dm = P._find(ws, "location_master", {"depot", "depot_name", "region"})
     dreg = {} if dm is None else {str(a): str(b) for a, b in zip(dm["depot"], dm["region"])}
@@ -53,6 +55,7 @@ def _replay(sell: np.ndarray, buf: int, first: int) -> dict:
 
 def view(depot, category, partner) -> dict:
     q, svc, _ = _tables()
+    q = q[q["category"].isin(QC_CATEGORIES)]
     if depot := _split(depot):
         q = q[q["Depot_Code"].isin(depot)]
     if category := _split(category):
@@ -73,8 +76,7 @@ def view(depot, category, partner) -> dict:
     otif = None
     if svc is not None:
         s = svc.assign(date=pd.to_datetime(svc["date"]).dt.normalize())
-        if category:
-            s = s[s["family"].isin(category)]
+        s = s[s["family"].isin(category or QC_CATEGORIES)]
         s = s[s["date"].isin(w.index)]
         if len(s):
             g = s.assign(o=s["Orders_Qty"], f=s["fill_rate"] * s["Orders_Qty"], t=s["On_Time_Rate"] * s["Orders_Qty"], x=s["otif"] * s["Orders_Qty"]).groupby("date")[["o", "f", "t", "x"]].sum()

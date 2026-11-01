@@ -96,7 +96,7 @@ export default function Distribution({ f, opts, onClear }: { f: Filters; opts: O
                 note={`Color-coded: Gray (under 100), Blue (100-5k), Teal (5k-10k), Orange (over 10k). Median: ${fmtN(d.median, 0)} units. Most weeks (${fmtPct(medVol / totalValues, 0)}) are typical.`} />
               <ChartCard title="SKU Concentration (80/20 Rule)" subtitle={`Pareto analysis of ${d.pareto.skus} SKUs`} label="Pareto curve"
                 headers={['SKU rank', 'Cumulative share (%)']} rows={d.pareto.curve.map((c: any) => [c.rank, fmtPct(c.share, 1)])}
-                chart={<TrendChart kind="labels" x={curve.map((c) => String(c.rank))} series={[{ name: 'Cumulative share', values: curve.map((c) => c.share), tone: 1 }]} yTitle="Share (%)" yFmt={(n) => `${Math.round(n * 100)}%`} label="Pareto curve" pointsAlways />}
+                chart={<TrendChart kind="labels" x={curve.map((c) => String(c.rank))} series={[{ name: 'Cumulative share', values: curve.map((c) => c.share), tone: 1 }]} xTitle="SKU rank" yTitle="Share (%)" yFmt={(n) => `${Math.round(n * 100)}%`} label="Pareto curve" pointsAlways />}
                 note={`ABC Classification: ${abc.map((r) => `${r.k} (${r.count} SKUs = ${fmtPct(r.share, 0)} volume)`).join(', ')}`} />
               <ChartCard title="Channel Evolution" subtitle="Quarterly unit share by channel" label="Channel mix"
                 headers={['Quarter', ...d.channel_mix.channels]} rows={d.channel_mix.quarters.map((q: string, i: number) => [q, ...d.channel_mix.share[i].map((v: number) => fmtPct(v, 1))])}
@@ -104,13 +104,13 @@ export default function Distribution({ f, opts, onClear }: { f: Filters; opts: O
                   series={d.channel_mix.channels.map((c: string, k: number) => ({ name: c, values: d.channel_mix.share.map((r: number[]) => r[k]) }))} yTitle="Share (%)" label="Channel mix" />} />
               <ChartCard title="Fill Rate by Family" subtitle="Orders fulfilled (invoiced/ordered)" label="Fill rate"
                 headers={['Family', 'Fill rate (%)']} rows={fr.by_family.map((x: any) => [x.family, fmtPct(x.v, 1)])}
-                chart={<BarsChart horizontal items={fr.by_family.map((x: any) => ({ label: x.family, value: x.v, tone: x.v < 0.97 ? 2 : 1 }))} yTitle="Rate (%)" fmt={(n) => fmtPct(n, 0)} domain={[0, 1]} label="Fill rate" />} />
+                chart={<BarsChart horizontal items={fr.by_family.map((x: any) => ({ label: x.family, value: x.v, tone: x.v < 0.97 ? 2 : 1 }))} yTitle="Rate (%)" xTitle="Family" fmt={(n) => fmtPct(n, 0)} domain={[0, 1]} label="Fill rate" />} />
               <ChartCard title="Monthly Fill Rate" subtitle="vs 90% target" label="Fill trend"
                 headers={['Month', 'Fill rate (%)']} rows={fr.months.map((m: string, i: number) => [monthLong(m), fmtPct(fr.values[i], 1)])}
                 chart={<TrendChart x={fr.months} series={[{ name: 'Fill rate', values: fr.values, tone: 1 }, { name: 'Target', values: fr.months.map(() => 0.9), tone: 2 }]} yTitle="Rate (%)" yFmt={(n) => fmtPct(n, 0)} zero={false} label="Fill trend" />} />
               <ChartCard title="Outlier Detection" subtitle="Flagged bulk/project orders" label="Outliers"
                 headers={['Family', 'Weeks flagged', 'Share (%)']} rows={d.outliers_by_family.map((o: any) => [o.family, o.count, fmtPct(o.share, 2)])}
-                chart={<BarsChart horizontal items={d.outliers_by_family.map((o: any) => ({ label: o.family, value: o.share }))} yTitle="Share (%)" fmt={(n) => fmtPct(n, 1)} label="Outliers" />} />
+                chart={<BarsChart horizontal items={d.outliers_by_family.map((o: any) => ({ label: o.family, value: o.share }))} yTitle="Share (%)" xTitle="Family" fmt={(n) => fmtPct(n, 1)} label="Outliers" />} />
               <DataCard id="classes" title="ABC Classification" description="SKU segmentation by volume" cols={abcCols} rows={abc} itemsLabel="Classes per page" rowKey={(r) => r.k} />
             </div>
             <DataCard id="spikes" title="Major Outliers" description="Weeks with unusual spikes (flagged, not removed)"

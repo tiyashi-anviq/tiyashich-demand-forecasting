@@ -10,11 +10,12 @@ export type TrendPoint = { group: string; index: number }
  *  The axis title carries the unit. `markers` draw a labelled line at a position; `onPick` makes every point
  *  clickable and says which series and which position was chosen. */
 export default function TrendChart({
-  x, series, kind = 'month', yTitle, yFmt = fmtN, zero = true, markers, onPick, label, pointsAlways, dotRadius = 3, noDots = false, height = CHART_HEIGHT, legend = true, autoLog = false,
+  x, series, kind = 'month', xTitle, yTitle, yFmt = fmtN, zero = true, markers, onPick, label, pointsAlways, dotRadius = 3, noDots = false, height = CHART_HEIGHT, legend = true, autoLog = false,
 }: {
   x: string[]
   series: Series[]
   kind?: 'month' | 'week' | 'labels'
+  xTitle?: string
   yTitle: string
   yFmt?: (n: number) => string
   zero?: boolean
@@ -58,8 +59,8 @@ export default function TrendChart({
     accessibility: { svgAriaLabel: label },
     axes: {
       bottom: kind !== 'labels'
-        ? { mapsTo: 'key', scaleType: 'time', title: kind === 'week' ? 'Week starting' : 'Month', thresholds, ticks: { number: 8 }, ...(x.length > 1 ? { domain: [key(0), key(x.length - 1)] } : {}) }
-        : { mapsTo: 'key', scaleType: 'labels', thresholds: [] },
+        ? { mapsTo: 'key', scaleType: 'time', title: xTitle ?? (kind === 'week' ? 'Week starting' : 'Month'), thresholds, ticks: { number: 8 }, ...(x.length > 1 ? { domain: [key(0), key(x.length - 1)] } : {}) }
+        : { mapsTo: 'key', scaleType: 'labels', ...(xTitle ? { title: xTitle } : {}), thresholds: [] },
       left: { mapsTo: 'value', scaleType: logAxis ? 'log' : 'linear', title: logAxis ? `${yTitle} (log scale)` : yTitle, includeZero: logAxis ? false : zero, ...(logAxis ? { domain: [Math.min(...allPos) / 1.5, Math.max(...allPos) * 1.3] } : {}), ticks: { ...(logAxis ? { values: logTicks } : { number: 5 }), formatter: (v: number) => yFmt(+v) } },
     },
     timeScale: { addSpaceOnEdges: 0 },

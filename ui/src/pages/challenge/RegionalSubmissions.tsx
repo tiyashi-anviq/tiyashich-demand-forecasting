@@ -18,7 +18,7 @@ function statusOf(r: any): { label: string; type: 'gray' | 'blue' | 'teal' | 'gr
   return { label: 'With the S&D Head', type: 'teal' }
 }
 
-/** The Regional Heads' product-level numbers, filtered by region, business unit, family and product so the S&D Head
+/** The Regional Heads' product-level numbers, filtered by region, channel, family and product so the S&D Head
  *  can look at one slice at a time instead of the whole book at once. Every row opens the negotiation. */
 export function RegionalSubmissions({ month, role, region, unit, units, options, stamp, onOpen }: {
   month: string
@@ -30,7 +30,7 @@ export function RegionalSubmissions({ month, role, region, unit, units, options,
   stamp: number
   onOpen: (family: string, region: string) => void
 }) {
-  // The view decides the filters: a Regional Head is always scoped to their own region, a BU Head to their own unit,
+  // The view decides the filters: a Regional Head is always scoped to their own region, a channel head to their own channel,
   // so the fixed part is shown as context instead of a dropdown that cannot be changed.
   const isRegional = role === 'regional'
   const isBu = role === 'bu'
@@ -117,7 +117,6 @@ export function RegionalSubmissions({ month, role, region, unit, units, options,
       ),
     },
     { header: 'Region', cell: (r) => r.region, sort: (r) => r.region },
-    { header: 'Business unit', cell: (r) => r.bu_name, sort: (r) => r.bu_name },
     { header: 'Family', cell: (r) => r.family, sort: (r) => r.family },
     { header: 'Channel', cell: (r) => (r.channel_name && r.channel_name !== r.channel ? `${r.channel_name} (${r.channel})` : r.channel), sort: (r) => r.channel },
     {
@@ -210,7 +209,7 @@ export function RegionalSubmissions({ month, role, region, unit, units, options,
           <h3 className="card-title">Regional Head submissions</h3>
           <p className="footnote">
             The numbers each Regional Head put on the table, product by product.
-            {isRegional ? ` This view is fixed to ${region}.` : isBu ? ` This view is fixed to ${unit?.name ?? 'your business unit'}.` : ' Narrow it by region, business unit and family; product and status are under More filters.'}
+            {isRegional ? ` This view is fixed to ${region}.` : isBu ? ` This view is fixed to ${unit?.name ?? 'your channel'}.` : ' Narrow it by region, channel and family; product and status are under More filters.'}
             {' '}Select a row to open that region's negotiation.
           </p>
         </div>
@@ -234,17 +233,17 @@ export function RegionalSubmissions({ month, role, region, unit, units, options,
           )}
           {isBu ? (
             <div className="filter-fixed">
-              <span className="cds--label">Business unit</span>
+              <span className="cds--label">Channel</span>
               <Tag size="md" type="purple">{unit?.name ?? fixedBu}</Tag>
             </div>
           ) : (
             <Dropdown
               id="sub-bu"
               size="md"
-              titleText="Business unit"
-              label="Business unit"
+              titleText="Channel"
+              label="Channel"
               items={[ALL, ...units.map((u) => u.bu)]}
-              itemToString={(i: string | null) => (i === ALL ? 'All business units' : buLabel[i ?? ''] ?? i ?? '')}
+              itemToString={(i: string | null) => (i === ALL ? 'All channels' : buLabel[i ?? ''] ?? i ?? '')}
               selectedItem={bu ?? ALL}
               onChange={({ selectedItem }) => setBu(selectedItem === ALL ? null : selectedItem)}
             />
@@ -301,7 +300,7 @@ export function RegionalSubmissions({ month, role, region, unit, units, options,
           ]} />
           {rows.length === 0 ? (
             <InlineNotification kind="info" lowContrast hideCloseButton title="No submissions match these filters."
-              subtitle="Widen the region, business unit, family or product filter, or clear the status filter." />
+              subtitle="Widen the region, channel, family or product filter, or clear the status filter." />
           ) : (
             <DataCard
               id="regional-submissions"

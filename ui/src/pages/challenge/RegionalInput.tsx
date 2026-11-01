@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiErrorNotification, PendingLabel, useToast } from '@reiq/ui'
 import { Button, Dropdown, InlineNotification, NumberInput, TextInput, Tile } from '@reiq/ui/carbon'
@@ -30,11 +30,11 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   const [bu, setBu] = useState<string | null>(units.length === 1 ? units[0].bu : null)
   const [family, setFamily] = useState<string | null>(null)
   const [product, setProduct] = useState<string | null>(null)
+  const [counterFamilyToReview, setCounterFamilyToReview] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, number>>({})
   const [reason, setReason] = useState('')
 
-  // Load the whole family for this region, so the submission always carries a number for every channel and SKU the
-  // region sells. The product picker only narrows what is shown, not what is sent.
+  // Load the whole family so filtered edits can leave every other channel and SKU unchanged.
   const q = useQuery({
     queryKey: ['regional-products', month, region, family, stamp],
     queryFn: () => getJson<any>(`/api/challenge/region/lines?month=${month}&family=${family}&region=${region}`),
@@ -42,15 +42,32 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
     staleTime: 0,
   })
 
+  useEffect(() => {
+    if (!counterFamilyToReview || family !== counterFamilyToReview || q.data?.family !== counterFamilyToReview) return
+    const changedRows = (q.data.rows ?? []).filter((row: any) => Number(row.qty) !== Number(row.submitted))
+    const channels = [...new Set<string>(changedRows.map((row: any) => row.bu).filter((value: unknown): value is string => typeof value === 'string'))]
+    const products = [...new Set<string>(changedRows.map((row: any) => row.sku).filter((value: unknown): value is string => typeof value === 'string'))]
+    setBu(channels.length === 1 ? channels[0] : null)
+    setProduct(products.length === 1 ? products[0] : null)
+    setCounterFamilyToReview(null)
+  }, [counterFamilyToReview, family, q.data])
+
   const post = useMutation({
     mutationFn: (body: any) => sendJson<any>('/api/challenge/region/respond', 'POST', { month, family, region, ...body }),
     onSuccess: (c, vars) => {
-      const total = Object.values(vars.lines || {}).reduce((sum: number, qty: any) => sum + Number(qty || 0), 0)
+      const total = vars.action === 'accept'
+        ? (q.data?.rows ?? []).reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0)
+        : Object.values(vars.lines || {}).reduce((sum: number, qty: any) => sum + Number(qty || 0), 0)
       const done = vars.action === 'accept' ? 'accepted' : 'submitted'
       showToast('success', `✓ Forecast ${done}!`, `${region} - ${family}: ${fmtN(total)} units`)
       onDone(c)
       setDraft({})
       setReason('')
+      if (vars.action === 'accept') {
+        setFamily(null)
+        setProduct(null)
+        setCounterFamilyToReview(null)
+      }
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.detail || error?.message || 'Could not submit forecast. Please try again.'
@@ -58,7 +75,21 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
     },
   })
 
-  const families = [...new Set((options.product ?? []).map((p) => p.family).filter(Boolean))] as string[]
+  const allFamilies = [...new Set((options.product ?? []).map((p) => p.family).filter(Boolean))] as string[]
+  const finalizedFamilies = new Set(items.flatMap((item) => {
+    const submission = item.regional?.find((entry: any) => entry.region === region)
+    return submission?.status === 'agreed' ? [item.family] : []
+  }))
+  const families = allFamilies.filter((itemFamily) => !finalizedFamilies.has(itemFamily))
+  useEffect(() => {
+    if (family && finalizedFamilies.has(family)) {
+      setFamily(null)
+      setProduct(null)
+      setDraft({})
+      setReason('')
+      setCounterFamilyToReview(null)
+    }
+  }, [family, items, region])
   const buName = units.find((u) => u.bu === bu)?.name ?? ''
 
   const d = q.data
@@ -80,8 +111,9 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   const rowsToSubmit = allRows.filter((r: any) => (!bu || r.bu === bu) && (!product || r.sku === product))
   const changed = rowsToSubmit.filter((r: any) => val(r) !== r.qty).length
   const incomplete = rowsToSubmit.filter((r: any) => !Number.isFinite(val(r)) || val(r) < 0).length
+  const regionFamilyTotal = allRows.reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0)
 
-  // The glance card sums the cycle data for whatever the three filters select: region always, then business unit
+  // The glance card sums the cycle data for whatever the three filters select: region always, then channel
   // and family when they are chosen. It reads from the cycle so it is filled in before a family is opened.
   // September is the last month with actuals, so October is the M1 forecast the card starts from.
   const monthLabel = (m: string, shift = 0) => {
@@ -91,6 +123,18 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   const thisLabel = monthLabel(month)
   const lyLabel = monthLabel(month, -12)
   const prevLabel = monthLabel(month, -1)
+  const countered = items.flatMap((it) => {
+    const submission = it.regional?.find((r: any) => r.region === region)
+    if (submission?.status !== 'negotiating' || submission.turn !== 'regional') return []
+    const rounds = submission.rounds ?? []
+    const lastRound = rounds[rounds.length - 1]
+    if (lastRound?.by !== 'S&D Head' || lastRound.action !== 'counter') return []
+    return [{ family: it.family, qty: lastRound.qty, reason: lastRound.reason }]
+  })
+  const selectedCounter = countered.find((item) => item.family === family)
+  const selectedCounterTotal = selectedCounter && d
+    ? regionFamilyTotal
+    : selectedCounter?.qty
   const glanceRows = rows.reduce((a, r) => ({
     model: a.model + r.model,
     last_year: a.last_year + r.last_year,
@@ -118,7 +162,10 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   }, { model: 0, last_year: 0, last_month: 0 })
 
   const cols: Col<any>[] = [
-    { header: 'Business unit', cell: (r) => units.find((u) => u.bu === r.bu)?.name ?? r.bu, sort: (r) => r.bu },
+    { header: 'Channel', cell: (r) => {
+      const name = units.find((u) => u.bu === r.bu)?.name ?? r.channel
+      return name === r.channel ? name : `${name} (${r.channel})`
+    }, sort: (r) => r.channel },
     {
       header: 'Product',
       cell: (r) => (
@@ -129,7 +176,6 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
       ),
       sort: (r) => r.description || r.sku,
     },
-    { header: 'Channel', cell: (r) => r.channel, sort: (r) => r.channel },
     { header: 'Model forecast (units)', num: true, cell: (r) => fmtInt(r.model), sort: (r) => r.model },
     { header: 'Same month last year (units)', num: true, cell: (r) => fmtInt(r.last_year), sort: (r) => r.last_year },
     { header: 'Last month (units)', num: true, cell: (r) => fmtInt(r.last_month), sort: (r) => r.last_month },
@@ -172,7 +218,7 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   )
   const buttonText = 
     isInitialSubmission ? 'Submit forecast' :
-    turn === 'regional' ? (changed > 0 ? 'Send counter-offer' : `Accept ${fmtInt(d?.total ?? 0)} units`) : 'Submit revised number'
+    turn === 'regional' ? (changed > 0 ? 'Send counter-offer' : `Accept ${fmtInt(regionFamilyTotal)} units`) : 'Submit revised number'
 
   return (
     <div className="stack-05">
@@ -194,6 +240,31 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
         ]} />
       </Tile>
 
+      {countered.length > 0 && (
+        <Tile className="card stack-03">
+          <h3 className="card-title">S&D Head responses waiting for you</h3>
+          {countered.map((item) => (
+            <div key={item.family} className="row-between">
+              <div>
+                <strong>{item.family}</strong>
+                <p className="footnote">
+                  Countered with {fmtInt(item.family === family && selectedCounterTotal !== undefined ? selectedCounterTotal : item.qty)} units across {region}
+                  {item.reason ? `: ${item.reason}` : '.'}
+                </p>
+              </div>
+              <Button kind="primary" size="sm" onClick={() => {
+                setFamily(item.family)
+                setCounterFamilyToReview(item.family)
+                setDraft({})
+                setReason('')
+              }}>
+                Review and respond
+              </Button>
+            </div>
+          ))}
+        </Tile>
+      )}
+
       <div className="challenge-bar">
         <Dropdown
           id="reg-region"
@@ -207,18 +278,19 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
             if (!selectedItem) return
             setDraft({})
             setReason('')
+            setCounterFamilyToReview(null)
             onRegion(selectedItem)
           }}
         />
         <Dropdown
           id="reg-bu"
           size="md"
-          titleText="Business unit"
-          label="Business unit"
+          titleText="Channel"
+          label="Channel"
           items={units.map((u) => u.bu)}
-          itemToString={(i: string | null) => i ?? ''}
+          itemToString={(i: string | null) => units.find((u) => u.bu === i)?.name ?? i ?? ''}
           selectedItem={bu}
-          onChange={({ selectedItem }) => { setBu(selectedItem); setProduct(null); setDraft({}); setReason('') }}
+          onChange={({ selectedItem }) => { setBu(selectedItem); setProduct(null); setDraft({}); setReason(''); setCounterFamilyToReview(null) }}
         />
         <Dropdown
           id="reg-family"
@@ -228,7 +300,7 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
           items={families}
           itemToString={(i: string | null) => i ?? ''}
           selectedItem={family}
-          onChange={({ selectedItem }) => { setFamily(selectedItem); setProduct(null); setDraft({}); setReason('') }}
+          onChange={({ selectedItem }) => { setFamily(selectedItem); setProduct(null); setDraft({}); setReason(''); setCounterFamilyToReview(null) }}
         />
         <Dropdown
           id="reg-product"
@@ -248,8 +320,15 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
       </div>
 
       {!family ? (
-        <InlineNotification kind="info" lowContrast hideCloseButton title="Choose a product family to enter numbers."
-          subtitle="The card above follows the region, business unit and family filters. The product table opens once a family is chosen." />
+        <InlineNotification
+          kind={allFamilies.length > 0 && families.length === 0 ? 'success' : 'info'}
+          lowContrast
+          hideCloseButton
+          title={allFamilies.length > 0 && families.length === 0 ? 'All product families are finalized for this region.' : 'Choose a product family to enter numbers.'}
+          subtitle={allFamilies.length > 0 && families.length === 0
+            ? 'Finalized regional numbers are locked and move to the BU heads once every region has agreed.'
+            : 'The card above follows the region, channel and family filters. The product table opens once a family is chosen.'}
+        />
       ) : q.isPending ? (
         <p className="supporting">Loading products for {region}{bu ? ` - ${buName}` : ''} - {family}...</p>
       ) : q.isError ? (
@@ -263,11 +342,11 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
             kind={isAgreed ? 'success' : turn === 'regional' ? 'warning' : 'info'}
             lowContrast
             hideCloseButton
-            title={isAgreed ? `Agreed at ${fmtInt(d.total)} units.` : turn === 'regional' ? 'The S&D Head is waiting for your response.' : 'Your number is with the S&D Head.'}
+            title={isAgreed ? `Agreed at ${fmtInt(d.total)} units.` : turn === 'regional' ? 'The S&D Head has responded. Review and update your numbers.' : 'Your number is with the S&D Head.'}
             subtitle={isAgreed
               ? d.agreed_by || 'Every line is agreed.'
               : turn === 'regional'
-                ? `The S&D Head put ${fmtInt(d.total)} units on the table. Accept it, or change the products and send a counter-offer.`
+                ? `The S&D Head put ${fmtInt(selectedCounterTotal ?? d.total)} units on the table for this region and family. Filters only narrow the lines shown; accepting finalizes the full regional total. ${selectedCounter?.reason ? `Their reason: ${selectedCounter.reason}` : ''}`
                 : `You can still revise your own number before the S&D Head responds. ${d.submitted_reason ? `Your note: ${d.submitted_reason}` : ''}`}
           />
 
@@ -324,8 +403,8 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
                 ) : null}
               </div>
               <p className="footnote">
-                Submitting sends all {allRows.length} product lines for {family} in {region}, including the other business units unchanged.
-                It does not change the numbers in any other region.
+                Submitting sends {rowsToSubmit.length} product line{rowsToSubmit.length === 1 ? '' : 's'} for {family} in {region}.
+                Other channel and SKU lines keep their current numbers, and no other region is changed. Once every region agrees with the S&D Head, the agreed regional numbers move to the BU heads.
               </p>
             </Tile>
           ) : null}

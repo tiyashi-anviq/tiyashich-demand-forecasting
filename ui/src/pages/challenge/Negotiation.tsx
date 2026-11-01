@@ -28,7 +28,7 @@ function defaultFamily(items: any[], role: Role, region: string | null, unit: { 
 }
 
 /** The one conversation per product, seen from whichever side is looking. The three levels are sequential: the S&D
- *  Head settles each region with its Regional Head first, then the business unit heads settle the consolidated number. */
+ *  Head settles each region with its Regional Head first, then the channel heads settle the consolidated number. */
 export function Negotiation({ month, items, role, region, unit, initialFamily, initialRegion, productFilter, stamp, onDone }: {
   month: string
   items: any[]
@@ -73,13 +73,13 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
   ]
 
   const buCols: Col<any>[] = [
-    { header: 'Business unit', cell: (r) => r.name, sort: (r) => String(r.name).toLowerCase() },
+    { header: 'Channel', cell: (r) => r.name, sort: (r) => String(r.name).toLowerCase() },
     { header: 'Head', cell: (r) => r.head },
     { header: 'Model (units)', num: true, cell: (r) => fmtN(r.model), sort: (r) => r.model },
     { header: 'Same month last year (units)', num: true, cell: (r) => fmtN(r.last_year), sort: (r) => r.last_year },
     { header: 'Current number (units)', num: true, cell: (r) => ((r.agreed ?? r.proposal) === null ? '–' : fmtN(r.agreed ?? r.proposal)), sort: (r) => r.agreed ?? r.proposal ?? 0 },
     { header: 'Against the model (%)', num: true, cell: (r) => { const g = gap(r.agreed ?? r.proposal, r.model); return g === null ? '–' : <span className={g >= 0 ? 'delta up' : 'delta down'}>{fmtSigned(g, 1)}</span> } },
-    { header: 'Status', cell: (r) => <Tag size="sm" type={r.status === 'agreed' ? 'green' : r.status === 'negotiating' ? 'teal' : 'gray'}>{r.status === 'agreed' ? 'Agreed' : r.status === 'negotiating' ? (r.turn === 'bu' ? 'With the BU Head' : 'With the S&D Head') : 'Not started'}</Tag> },
+    { header: 'Status', cell: (r) => <Tag size="sm" type={r.status === 'agreed' ? 'green' : r.status === 'negotiating' ? 'teal' : 'gray'}>{r.status === 'agreed' ? 'Agreed' : r.status === 'negotiating' ? (r.turn === 'bu' ? 'With the channel head' : 'With the S&D Head') : 'Not started'}</Tag> },
   ]
 
   const bus = role === 'bu' && unit ? it.bus.filter((b: any) => b.bu === unit.bu) : it.bus
@@ -92,7 +92,7 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
           <h3 className="card-title">Negotiation: {it.family}</h3>
           <p className="footnote">
             Model {fmtN(it.model)} units • Regional Heads {fmtN(it.regional_total)} • On the table now {fmtN(now)} ({fmtSigned(gap(now, it.model), 1)} against the model).
-            Each region is agreed first; the business units then agree the consolidated Number.
+            Each region is agreed first; the channel heads then agree the consolidated number.
           </p>
         </div>
         <div className="challenge-bar">
@@ -112,8 +112,8 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
         </div>
         <StatRow items={[
           { label: 'Regional Heads', value: `${it.n_regions_agreed} of ${it.n_regions}`, sublabel: stage === 'regions' ? `${sdWaiting} waiting for the S&D Head` : 'All regions agreed' },
-          { label: 'S&D Head', value: stage === 'regions' ? `${sdWaiting} to answer` : 'Region numbers settled', sublabel: stage === 'regions' ? `${regionalWaiting} waiting for a Regional Head` : 'Mediating the business units' },
-          { label: 'BU Heads', value: it.consolidated === null ? 'Not started' : `${it.n_agreed} of ${it.bus.length}`, sublabel: it.consolidated === null ? 'Starts once every region agrees' : `${buWaiting} waiting for a BU Head` },
+          { label: 'S&D Head', value: stage === 'regions' ? `${sdWaiting} to answer` : 'Region numbers settled', sublabel: stage === 'regions' ? `${regionalWaiting} waiting for a Regional Head` : 'Mediating the channels' },
+          { label: 'Channel heads', value: it.consolidated === null ? 'Not started' : `${it.n_agreed} of ${it.bus.length}`, sublabel: it.consolidated === null ? 'Starts once every region agrees' : `${buWaiting} waiting for a channel head` },
           { label: 'Final value (units)', value: it.agreed === null ? '–' : fmtN(it.agreed), sublabel: it.agreed === null ? 'Not agreed by all three yet' : 'All three levels agreed' },
         ]} />
       </Tile>
@@ -122,20 +122,20 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
         kind={stage === 'agreed' ? 'success' : stage === 'regions' ? 'info' : 'warning'}
         lowContrast
         hideCloseButton
-        title={stage === 'agreed' ? 'All three levels have agreed this family.' : stage === 'regions' ? 'Step 1 of 2: the regions agree with the S&D Head.' : 'Step 2 of 2: the business units agree with the S&D Head.'}
+        title={stage === 'agreed' ? 'All three levels have agreed this family.' : stage === 'regions' ? 'Step 1 of 2: the regions agree with the S&D Head.' : 'Step 2 of 2: the channels agree with the S&D Head.'}
         subtitle={stage === 'agreed'
           ? 'The numbers are in the Final values tab and are what Supply and Procurement plan on.'
           : stage === 'regions'
-            ? 'Each Regional Head submits product by product. The S&D Head accepts, counters or makes the final call. Once every region agrees, the family goes to the business unit heads.'
-            : 'The regional numbers are locked. Each business unit head now accepts or counters the consolidated number with the S&D Head. When every unit agrees, the family becomes final.'}
+            ? 'Each Regional Head submits product by product. The S&D Head accepts, counters or makes the final call. Once every region agrees, the family goes to the channel heads (BU heads).'
+            : 'The regional numbers are locked. Each channel head (BU head) now accepts or counters the consolidated number with the S&D Head. When every channel agrees, the family becomes final.'}
       />
 
       {stage === 'regions' ? (
         role === 'bu' ? (
           <>
             <InlineNotification kind="info" lowContrast hideCloseButton title="Waiting for the regions to finish."
-              subtitle="This family reaches the business units once every region has agreed its numbers with the S&D Head. These are the regions it is waiting on." />
-            <DataCard id="neg-regions-readonly" title="Where the regions stand" description="Read-only for the BU Head" cols={regionCols}
+              subtitle="This family reaches the channels once every region has agreed its numbers with the S&D Head. These are the regions it is waiting on." />
+            <DataCard id="neg-regions-readonly" title="Where the regions stand" description="Read-only for the channel head" cols={regionCols}
               rows={it.regional} itemsLabel="Regions per page" rowKey={(r: any) => r.region} />
           </>
         ) : (
@@ -147,7 +147,7 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
             <RegionsSection it={it} role={role} pick={region} onPick={() => {}} productFilter={productFilter} stamp={stamp} onDone={onDone} />
           ) : (
             <>
-              <DataCard id="neg-bus" title="Business units" description={role === 'bu' ? 'Your unit for this family' : 'One conversation per unit. Select a row to open it'}
+              <DataCard id="neg-bus" title="Channels" description={role === 'bu' ? 'Your channel for this family' : 'One conversation per channel. Select a row to open it'}
                 cols={buCols} rows={bus} itemsLabel="Units per page" rowKey={(r: any) => r.bu}
                 onRow={(r: any) => setBuPick(r.bu)} selected={(r: any) => r.bu === chosen?.bu} />
               {chosen ? <BuPanel key={`${month}|${it.family}|${chosen.bu}|${role}`} it={it} b={chosen} role={role} stamp={stamp} onDone={onDone} /> : null}

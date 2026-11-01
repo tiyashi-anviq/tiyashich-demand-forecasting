@@ -71,10 +71,20 @@ export default function QuickCommerce() {
             {pick('qc-d', 'Depot', opts.data.depots, depot, setDepot)}
             {pick('qc-c', 'Category', opts.data.categories, cat, setCat)}
             {pick('qc-p', 'Partner', opts.data.partners, partner, setPartner)}
+            <Dropdown
+              id="qc-window"
+              size="md"
+              titleText="Time period"
+              label="Time period"
+              items={WINDOWS}
+              itemToString={(item: (typeof WINDOWS)[number] | null) => item?.label ?? ''}
+              selectedItem={WINDOWS.find((window) => window.id === win) ?? WINDOWS[1]}
+              onChange={({ selectedItem }: any) => selectedItem && setWin(selectedItem.id)}
+            />
           </div>
         ) : undefined} />
       <NeedsData base="eda" building={{ what: 'prepare your data', how: 'Joining sales with partner and weather data takes about 15 seconds the first time and is saved afterwards.' }}>
-        <ViewShell query={q} errorTitle="Could not load quick commerce" emptyTitle="No quick-commerce orders for this selection" emptyMessage="Pick another depot, category or partner." onClear={() => { setDepot(ALL); setCat(ALL); setPartner(ALL) }}>
+        <ViewShell query={q} errorTitle="Could not load quick commerce" emptyTitle="No quick-commerce orders for this selection" emptyMessage="Pick another depot, category, partner or time period." onClear={() => { setDepot(ALL); setCat(ALL); setPartner(ALL); setWin('26') }}>
           {(d) => {
             const n = d.weeks.length
             const lo = win === 'all' ? 0 : Math.max(0, n - +win)
@@ -114,17 +124,14 @@ export default function QuickCommerce() {
             return (
               <>
                 <div className="row-03">
-                  <ContentSwitcher size="md" selectedIndex={WINDOWS.findIndex((w) => w.id === win)} onChange={(e: any) => setWin(WINDOWS[e.index].id)}>
-                    {WINDOWS.map((w) => <Switch key={w.id} name={w.id} text={w.label} />)}
-                  </ContentSwitcher>
                   <Dropdown id="qc-b" size="md" titleText="Buffer stock at partner" label="Buffer" items={['1', '2', '3']} itemToString={(i: string | null) => (i ? `${i} week${i === '1' ? '' : 's'}` : '')} selectedItem={buf} onChange={({ selectedItem }: any) => selectedItem && setBuf(selectedItem)} />
                 </div>
                 <StatRow items={[
-                  { label: 'Fulfilment (%)', value: fmtPct(po ? cf / po : null, 1), sublabel: `Confirmed ${fmtN(cf)} of ${fmtN(po)} requested units` },
-                  { label: 'OTIF (%)', value: otifAvg === null ? '–' : fmtPct(otifAvg, 1), sublabel: 'Orders on time and in full, all channels for these categories' },
-                  { label: 'Over-order multiple (×)', value: so ? (po / so).toFixed(1) : '–', sublabel: `Peak week ${peak.toFixed(1)}×` },
-                  { label: 'Partner stock cover', value: `${cover.toFixed(1)} wk`, sublabel: `${fmtN(stock)} units confirmed but not yet sold, since the first order` },
-                  { label: 'Shipped against real need (%)', value: reqW ? fmtSigned(rec / reqW - 1, 0) : '–', sublabel: `Recommended ${fmtN(rec)} against ${fmtN(reqW)} requested` },
+                  { label: 'Fulfilment', value: fmtPct(po ? cf / po : null, 1), sublabel: `Confirmed ${fmtN(cf)} of ${fmtN(po)} requested units`, info: 'The share of partner-requested units we confirmed. For example, if partners request 100 units and we confirm 98, fulfilment is 98%. This measures units, not whether orders arrived on time.' },
+                  { label: 'OTIF', value: otifAvg === null ? '–' : fmtPct(otifAvg, 1), sublabel: 'Orders on time and in full, all channels for these categories', info: 'The share of order lines delivered both on time and in full. For example, if 81 out of 100 order lines meet both conditions, OTIF is 81%. This measure covers all channels for the selected categories, not just quick commerce.' },
+                  { label: 'Over-order (×)', value: so ? (po / so).toFixed(1) : '–', sublabel: `Peak week ${peak.toFixed(1)}×`, info: 'Partner-requested units divided by units sold to shoppers. For example, 120 units requested and 100 sold is 1.2×, meaning requests were 20% above sell-out. The sublabel shows the highest weekly multiple.' },
+                  { label: 'Stock cover', value: `${cover.toFixed(1)} wk`, sublabel: `${fmtN(stock)} units confirmed but not yet sold, since the first order`, info: 'Estimated weeks the accumulated unsold stock could cover at the average sell-out of the latest four weeks. For example, 2,000 unsold units and 100 sold per week gives 20 weeks of cover. It is an estimate based on recent sell-out.' },
+                  { label: 'Recommendation', value: reqW ? fmtSigned(rec / reqW - 1, 0) : '–', sublabel: `Recommended ${fmtN(rec)} against ${fmtN(reqW)} requested`, info: 'Compares the recommended shipment with partner requests over the selected weeks. For example, a recommendation of 90 units against 100 requested is −10%, so the recommendation is 10% below the request. The recommendation uses recent sell-out plus the selected buffer; it is not the shipment already made.' },
                 ]} />
                 <ChartCard title="Requested against real need" subtitle="Weekly units, quick commerce"
                   label="Weekly quick-commerce units requested, confirmed, sold and recommended"
