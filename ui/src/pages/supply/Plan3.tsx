@@ -136,7 +136,7 @@ export default function Plan3({ f }: { f: Filters }) {
           return (
             <>
               <StatRow items={[
-                { label: `Demand, ${mo0} (units)`, info: 'The forecast for the month, summed over every product.', value: fmtN(dem0), sublabel: 'Forecast for the month after the last actuals. Est.' },
+                { label: `Demand, ${mo0} (units)`, info: 'The demand the plan is built on: for each family, the number the S&D team finalised in the Forecast challenge once every business unit agreed, and the model forecast until then.', value: fmtN(dem0), sublabel: (d.agreed_families?.length ? `S&D's final number for ${d.agreed_families.length} of ${famList.length} families, the model for the rest. ` : 'The model forecast; no family has been finalised by S&D yet. ') + 'Est.' },
                 { label: 'Units the plants can make', info: 'What the five plants can make within their rated capacity, after plants with room take on what full plants cannot make.', value: fmtN(made0), sublabel: `${fmtN(unmet0)} units unmet at the end of ${mo0}` },
                 { label: 'Raw materials to buy (₹)', info: 'Purchases that bring each material back to its target cover, rounded up to the minimum order and pack size.', value: inr(buy0), sublabel: `${risk0} materials at lead-time risk. Est.` },
                 { label: 'Plant-lines at full capacity', info: G.utilisation, value: String(full0), sublabel: `Counted by plant and line in ${mo0}. Est.` },

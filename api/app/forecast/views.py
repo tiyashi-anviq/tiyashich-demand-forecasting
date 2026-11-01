@@ -98,7 +98,8 @@ def options() -> dict:
     r = engine.result()
     sidx = r["sidx"]
     names = r.get("sku_names", {})
-    prod = [dict(id=c, label=f"{c} {names[c].replace('Eveready ', '')}" if names.get(c) else c) for c in sorted(r["skus"]["sku"].unique())]
+    fam_of = r["skus"].drop_duplicates("sku").set_index("sku")["family"].to_dict()
+    prod = [dict(id=c, family=str(fam_of.get(c, "")), label=f"{c} {names[c].replace('Eveready ', '')}" if names.get(c) else c) for c in sorted(r["skus"]["sku"].unique())]
     return dict(family=sorted(sidx["family"].unique()), region=sorted(sidx["region"].unique()), channel=sorted(sidx["channel"].unique()), product=prod)
 
 

@@ -6,7 +6,8 @@ import type { Issue, Quality } from '../../types'
 import { api } from '../../api'
 import { fmtInt } from '../../lib/format'
 
-function IssueTable({ issues, decisions, onChange, caption }: { issues: Issue[]; decisions: Record<string, string>; onChange: (id: string, v: string) => void; caption: string }) {
+/** `flag` picks the row colour: red for problems to fix, yellow for minor notes; rows that are fine stay plain. */
+function IssueTable({ issues, decisions, onChange, caption, flag }: { issues: Issue[]; decisions: Record<string, string>; onChange: (id: string, v: string) => void; caption: string; flag?: 'red' | 'yellow' }) {
   return (
     <div className="table-scroll thin-scroll">
       <Table size="md" aria-label={caption}>
@@ -21,7 +22,7 @@ function IssueTable({ issues, decisions, onChange, caption }: { issues: Issue[];
         </TableHead>
         <TableBody>
           {issues.map((i) => (
-            <TableRow key={i.id}>
+            <TableRow key={i.id} className={flag && (flag === 'yellow' || (i.severity !== 'ok' && i.severity !== 'skipped')) ? `issue-row-${flag}` : undefined}>
               <TableCell><span className="row-03">
                 {i.severity === 'ok' ? <CheckmarkFilled size={16} aria-label="Fine" /> : i.severity === 'warn' ? <WarningAltFilled size={16} aria-label="Needs a decision" /> : null}
                 {i.title}</span></TableCell>
@@ -115,7 +116,7 @@ export default function CheckQuality({ batchId, quality, setQuality, decisions, 
           <div className="stack-03">
             <h3 className="card-title-sm">Fix before loading {toReview > 0 && <Tag type="red" size="sm">{toReview}</Tag>}</h3>
             <p className="supporting">Problems in the files themselves.</p>
-            <IssueTable issues={cleanup} decisions={decisions} onChange={set} caption="Problems in the files" />
+            <IssueTable issues={cleanup} decisions={decisions} onChange={set} caption="Problems in the files" flag="red" />
           </div>
         ) : null}
       </PageSection>
@@ -127,7 +128,7 @@ export default function CheckQuality({ batchId, quality, setQuality, decisions, 
       {minor.length > 0 && (
         <Accordion>
           <AccordionItem title={`${minor.length} minor note${minor.length === 1 ? '' : 's'}, no action needed`}>
-            <IssueTable issues={minor} decisions={decisions} onChange={set} caption="Minor notes" />
+            <IssueTable issues={minor} decisions={decisions} onChange={set} caption="Minor notes" flag="yellow" />
           </AccordionItem>
         </Accordion>
       )}

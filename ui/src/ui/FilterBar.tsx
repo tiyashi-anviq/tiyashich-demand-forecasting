@@ -14,17 +14,24 @@ export function FilterBar({ f, set, reset, dirty, opts, period = false, measure 
 }) {
   const multi = (key: 'family' | 'region' | 'channel', title: string, all: string) => (
     <MultiSelect id={`flt-${key}`} size="md" titleText={title} label={f[key].length ? `${f[key].length} selected` : all} items={opts[key]}
-      itemToString={(i: string) => i} selectedItems={f[key]} onChange={({ selectedItems }: { selectedItems: string[] }) => set({ [key]: selectedItems })} />
+      itemToString={(i: string) => i} selectedItems={f[key]} onChange={({ selectedItems }: { selectedItems: string[] }) => {
+        if (key !== 'family') return set({ [key]: selectedItems })
+        // products outside the newly chosen families are dropped, so the two filters never contradict each other
+        const ok = new Set((opts.product ?? []).filter((p) => !selectedItems.length || !p.family || selectedItems.includes(p.family)).map((p) => p.id))
+        set({ family: selectedItems, product: f.product.filter((id) => ok.has(id)) })
+      }} />
   )
+  // with families chosen only their products are offered; with none chosen every product can be picked
+  const products = (opts.product ?? []).filter((p) => !f.family.length || !p.family || f.family.includes(p.family))
   const measures = opts.measures ?? []
   return (
     <div className="filter-bar" role="group" aria-label="Filters">
-      {multi('family', 'Product family', 'All families')}
       {multi('region', 'Region', 'All regions')}
       {channel && multi('channel', 'Channel', 'All channels')}
+      {multi('family', 'Product family', 'All families')}
       {opts.product && (
-        <MultiSelect id="flt-product" size="md" titleText="Product" label={f.product.length ? `${f.product.length} selected` : 'All products'} items={opts.product}
-          itemToString={(i: { id: string; label: string }) => i?.label ?? ''} selectedItems={opts.product.filter((p) => f.product.includes(p.id))}
+        <MultiSelect id="flt-product" size="md" titleText="Product" label={f.product.length ? `${f.product.length} selected` : f.family.length ? 'All products in these families' : 'All products'} items={products}
+          itemToString={(i: { id: string; label: string }) => i?.label ?? ''} selectedItems={products.filter((p) => f.product.includes(p.id))}
           onChange={({ selectedItems }: { selectedItems: { id: string }[] }) => set({ product: selectedItems.map((p) => p.id) })} />
       )}
       {period && (

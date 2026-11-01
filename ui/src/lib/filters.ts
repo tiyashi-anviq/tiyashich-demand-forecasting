@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 
 export type Filters = { family: string[]; region: string[]; channel: string[]; product: string[]; period: string; measure: string }
 export const DEFAULT_FILTERS: Filters = { family: [], region: [], channel: [], product: [], period: 'all', measure: 'orders' }
-export type Options = { family: string[]; region: string[]; channel: string[]; product?: { id: string; label: string }[]; date_from?: string; date_to?: string; measures?: { id: string; label: string }[] }
+export type Options = { family: string[]; region: string[]; channel: string[]; product?: { id: string; label: string; family?: string }[]; date_from?: string; date_to?: string; measures?: { id: string; label: string }[] }
 
 const list = (v: string | null) => (v ? v.split('~').filter(Boolean) : [])
 

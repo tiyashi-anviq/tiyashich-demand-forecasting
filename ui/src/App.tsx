@@ -24,6 +24,9 @@ function usePinnedHeaderHeight() {
       const off = parseFloat(h?.style.getPropertyValue('--module-page-header-toolbar-offset') ?? '0') || 0
       const v = h ? `${Math.max(0, Math.round(h.offsetHeight - off))}px` : '0px'
       if (document.documentElement.style.getPropertyValue('--pinned-header-h') !== v) document.documentElement.style.setProperty('--pinned-header-h', v)
+      const tb = document.querySelector<HTMLElement>('.tabbed-view-row')
+      const tv = tb ? `${tb.offsetHeight}px` : '3rem'
+      if (document.documentElement.style.getPropertyValue('--tabs-h') !== tv) document.documentElement.style.setProperty('--tabs-h', tv)
     }
     set()
     const id = window.setInterval(set, 300)  // the header can appear, grow or lose its filters after the page loads

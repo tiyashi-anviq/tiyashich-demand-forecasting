@@ -19,7 +19,7 @@ export default function Overview({ f, opts, onClear }: { f: Filters; opts: Optio
     <ViewShell query={q} errorTitle="Could not load the overview" onClear={onClear}>
       {(d) => {
         const k = d.kpis
-        const win = k.yoy_win ? `${monthLong(k.yoy_win[2])} to ${monthLong(k.yoy_win[3])} vs the 12 months before` : 'needs 24 complete months'
+        const win = k.yoy_win ? `${monthLong(k.yoy_win[2])} to ${monthLong(k.yoy_win[3])} vs the 12 months before` : ''
         const ms: string[] = d.monthly.map((m: any) => m.m)
         const monthly = [{ name: 'Orders received', values: d.monthly.map((m: any) => m.orders), tone: 1 as const }, { name: 'Sales invoiced', values: d.monthly.map((m: any) => m.sales), tone: 2 as const }]
         const t = seriesTable('Month', ms.map(monthLong), monthly, (n) => String(Math.round(n)))
@@ -38,8 +38,8 @@ export default function Overview({ f, opts, onClear }: { f: Filters; opts: Optio
               { label: 'Ordered (units, orders received)', value: fmtN(k.orders) },
               { label: 'Invoiced (units, sales done)', value: fmtN(k.invoiced), sublabel: `${k.fill_rate === null ? '–' : fmtPct(k.fill_rate, 1)} of orders` },
               { label: 'Ordered but not invoiced (units)', value: fmtN(k.unserved) },
-              { label: `Orders, ${win}`, value: <Delta value={k.yoy_orders} text={fmtSigned(k.yoy_orders, 1)} /> },
-              { label: `Sales invoiced, ${win}`, value: <Delta value={k.yoy_sales} text={fmtSigned(k.yoy_sales, 1)} /> },
+              ...(k.yoy_win ? [{ label: `Orders, ${win}`, value: <Delta value={k.yoy_orders} text={fmtSigned(k.yoy_orders, 1)} /> }] : []),
+              ...(k.yoy_win ? [{ label: `Sales invoiced, ${win}`, value: <Delta value={k.yoy_sales} text={fmtSigned(k.yoy_sales, 1)} /> }] : []),
               { label: 'Weeks of data', value: k.weeks, sublabel: `${fmtDate(k.date_from)} to ${fmtDate(k.date_to)}` },
             ]} />
             <Findings items={d.findings} title="What the data says" />

@@ -169,7 +169,7 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
               const cmpRows = [
                 { title: 'Against last month', ref: prev, month: shiftM(sel, -1) },
                 { title: 'Against the same month last year', ref: lastYear, month: shiftM(sel, -12) },
-              ].map((c) => ({ ...c, change: c.ref && cur ? cur.v / c.ref.v - 1 : null, diff: c.ref && cur ? cur.v - c.ref.v : null,
+              ].filter((c) => c.month === refMonth).map((c) => ({ ...c, change: c.ref && cur ? cur.v / c.ref.v - 1 : null, diff: c.ref && cur ? cur.v - c.ref.v : null,
                 pw: c.ref && cur ? perWeek(cur.v, c.ref.v) : null, days: daysIn(c.month) }))
               const cmpCols: Col<any>[] = [
                 { header: 'Compared with', cell: (r) => r.title },
@@ -247,7 +247,7 @@ export default function Vintages({ f, onClear, only }: { f: Filters; onClear: ()
                   <ContentSwitcher size="sm" selectedIndex={basis === 'mom' ? 0 : 1} onChange={({ index = 0 }) => setBasis(index === 0 ? 'mom' : 'yoy')}>
                     <Switch name="mom" text="Compare with last month" /><Switch name="yoy" text="Compare with the same month last year" />
                   </ContentSwitcher>
-                  <DataCard id="cmp" title={`${monthLong(sel)} against other months`} description="Where the selected month sits against last month and the same month a year earlier" cols={cmpCols} rows={cmpRows} itemsLabel="Rows per page" rowKey={(r) => r.title}
+                  <DataCard id="cmp" title={`${monthLong(sel)} against ${basis === 'mom' ? 'last month' : 'the same month last year'}`} description={`Where the selected month sits against ${monthLong(refMonth)}`} cols={cmpCols} rows={cmpRows} itemsLabel="Rows per page" rowKey={(r) => r.title}
                     note={oddDays ? `Why the total and the per-week figure differ: months have 28 to 31 days, about 4 to 4.4 weeks. ${monthLong(sel)} has ${daysIn(sel)} days. The per-week figure takes month length out, so it shows the change in demand.` : undefined} />
                   {methodsRows.length > 0 ? (
                     <DataCard id="mth" title="What each method says" description={`The three methods behind the ${run} blend, for ${monthLong(sel)}, set against ${basis === 'mom' ? 'last month' : 'the same month last year'}`} cols={mCols} rows={methodsRows} itemsLabel="Methods per page" rowKey={(r) => r.name}

@@ -1,5 +1,7 @@
-"""Forecast challenge: regional numbers come in, the S&D Head consolidates them by product family, then talks to each Business Unit
-head separately about that unit's share. Each agreed number becomes part of the sales team's forecast for the month.
+"""Forecast challenge: every number is held at the deepest level, region -> channel -> SKU. Each Regional Head submits a number for every
+channel and SKU in their region and agrees it with the S&D Head. Once every region has agreed a family, the agreed numbers go to the
+Business Unit heads, who each take the channels under them (across all regions) and agree them line by line with the S&D Head. What the
+units agree is the final forecast for the month, and the supply plan, depot allocation and stock transfers are checked against it.
 Decisions are kept in one small JSON file next to the workspace."""
 from __future__ import annotations
 
@@ -19,13 +21,27 @@ MONTHS_AHEAD = (0, 1, 2)  # the three months after the last actuals: with Septem
 REGIONS_ORDER = ["North", "South", "East", "West"]
 
 
+def _migrate(d: dict) -> dict:
+    """Numbers saved before the challenge went to channel and SKU level cannot be read at that level, so they are dropped."""
+    d.setdefault("items", {})
+    d.setdefault("consol", {})
+    d.setdefault("rneg", {})
+    stale_r = [k for k, v in d["rneg"].items() if any("|" not in s_ for s_ in v.get("lines", {}))]
+    stale_b = any("lines" not in v for v in d["items"].values())
+    for k in stale_r:
+        del d["rneg"][k]
+    if stale_r or stale_b:
+        d["items"], d["consol"] = {}, {}
+    return d
+
+
 def _load() -> dict:
     if FILE.exists():
         try:
-            return json.loads(FILE.read_text())
+            return _migrate(json.loads(FILE.read_text()))
         except Exception:
             pass
-    return {"items": {}, "regional": {}, "consol": {}}
+    return _migrate({})
 
 
 def _save(d: dict) -> None:
@@ -104,6 +120,7 @@ def _skumodel():
     ym = {m: i for i, m in enumerate(months)}
     cyc = [fm[i] for i in MONTHS_AHEAD]
     out: dict = {}
+    chan: dict = {}  # (family, region, channel, sku, month) -> (model, last year)
     for i, row in enumerate(sk.itertuples(index=False)):
         bu = bu_of.get(row.channel, units[0]["bu"])
         for k, m in zip(MONTHS_AHEAD, cyc):
@@ -113,10 +130,13 @@ def _skumodel():
             for key in ((row.family, row.region, row.sku, m), (row.family, row.region, row.sku, bu, m)):
                 a = out.get(key, (0.0, 0.0))
                 out[key] = (a[0] + f, a[1] + ly)
+            ck = (row.family, row.region, row.channel, row.sku, m)
+            a = chan.get(ck, (0.0, 0.0))
+            chan[ck] = (a[0] + f, a[1] + ly)
     skus = {}
     for row in sk.drop_duplicates("sku").itertuples(index=False):
         skus[row.sku] = row.family
-    v = dict(cell=out, skus=skus)
+    v = dict(cell=out, chan=chan, skus=skus)
     _scache.update(key=id(r), v=v)
     return v
 
@@ -129,26 +149,31 @@ def _desc() -> dict:
     return df.drop_duplicates("sku").set_index("sku")["description"].astype(str).to_dict()
 
 
-def _sku_seed(fam: str, reg: str, m: str, sku: str, model: float) -> float:
-    """A region's starting number for one SKU: the region's family-level nudge, with a small repeatable wobble per SKU. Simulated."""
+def _sku_seed(fam: str, reg: str, m: str, line: str, model: float) -> float:
+    """A region's starting number for one channel and SKU: the region's family-level nudge, with a small repeatable wobble per line. Simulated."""
     h = int(hashlib.md5(f"{fam}|{reg}|{m}".encode()).hexdigest()[:6], 16) / 0xFFFFFF
-    w = int(hashlib.md5(f"{sku}|{reg}|{m}".encode()).hexdigest()[:6], 16) / 0xFFFFFF
+    w = int(hashlib.md5(f"{line}|{reg}|{m}".encode()).hexdigest()[:6], 16) / 0xFFFFFF
     return round(model * (1.02 + 0.16 * h) * (0.94 + 0.12 * w))
 
 
+def _bu_for(channel: str) -> str:
+    units, bu_of = _units()
+    return bu_of.get(channel, units[0]["bu"])
+
+
 def region_skus(m: str, fam: str, reg: str) -> list[dict]:
-    """The SKUs a region sells in a family, with the model and last year, largest first."""
+    """The channel and SKU lines a region sells in a family, channel by channel, largest SKU first."""
     sm = _skumodel()
     rows = []
-    for key, (mod, ly) in sm["cell"].items():
-        if len(key) == 4 and key[0] == fam and key[1] == reg and key[3] == m:
-            rows.append(dict(sku=key[2], model=mod, last_year=ly))
-    rows.sort(key=lambda x: -x["model"])
+    for key, (mod, ly) in sm["chan"].items():
+        if key[0] == fam and key[1] == reg and key[4] == m:
+            rows.append(dict(channel=key[2], sku=key[3], model=mod, last_year=ly))
+    rows.sort(key=lambda x: (x["channel"], -x["model"]))
     return rows
 
 
 def _rdef(m: str, fam: str, reg: str) -> dict:
-    lines = {x["sku"]: _sku_seed(fam, reg, m, x["sku"], x["model"]) for x in region_skus(m, fam, reg)}
+    lines = {f"{x['channel']}|{x['sku']}": _sku_seed(fam, reg, m, f"{x['channel']}|{x['sku']}", x["model"]) for x in region_skus(m, fam, reg)}
     return dict(status="negotiating", turn="sd", lines=lines, simulated=True, agreed_by=None,
                 rounds=[dict(by=f"{reg} Regional Head", action="propose", qty=sum(lines.values()), reason="Regional submission (simulated)", at=0)])
 
@@ -193,7 +218,8 @@ def cycle() -> dict:
                 ri = _ritem(d, m, fam, reg)
                 q = round(sum(ri["lines"].values()))
                 regs.append(dict(region=reg, model=round(model), last_year=round(ly), qty=q, simulated=ri["simulated"], note="", status=ri["status"], turn=ri["turn"],
-                                 rounds=ri["rounds"], agreed_by=ri["agreed_by"], skus=len(ri["lines"])))
+                                 rounds=ri["rounds"], agreed_by=ri["agreed_by"], skus=len({k.split("|", 1)[1] for k in ri["lines"]}),
+                                channels=len({k.split("|", 1)[0] for k in ri["lines"]})))
                 model_t += model
                 ly_t += ly
                 sub_t += q
@@ -233,35 +259,8 @@ def _bu(row: dict, bu: str) -> dict:
     return b
 
 
-def regional_submit(m: str, region: str, qtys: dict[str, float], note: str) -> None:
-    d = _load()
-    for fam, q in qtys.items():
-        if f"{m}|{fam}" in d["consol"]:
-            continue  # already with the S&D Head or beyond: that family is locked
-        d["regional"][f"{m}|{fam}|{region}"] = dict(qty=round(float(q)), note=note, at=time.time())
-    _save(d)
-
-
-def consolidate(m: str, fam: str, qty: float | None) -> None:
-    """The S&D Head fixes the national number for a family and opens a conversation with each business unit, starting
-    each unit's share at its slice of the model for that family and month."""
-    row = _row(m, fam)
-    if row["consolidated"] is not None:
-        raise ValueError("This family has already been sent to the business units.")
-    d = _load()
-    q = round(float(qty)) if qty is not None else row["regional_total"]
-    d["consol"][f"{m}|{fam}"] = dict(qty=q, at=time.time())
-    why = "Sum of the four regional numbers, split by the unit's share of the model" if qty is None else "Adjusted before sending, split by the unit's share of the model"
-    left = q
-    for i, b in enumerate(row["bus"]):
-        p = round(q * b["share"]) if i < len(row["bus"]) - 1 else left  # the last unit takes the rounding remainder
-        left -= p
-        d["items"][f"{m}|{fam}|{b['bu']}"] = dict(status="negotiating", proposal=p, turn="bu", agreed=None, agreed_by=None,
-                                                   rounds=[dict(by="S&D Head", action="propose", qty=p, reason=why, at=time.time())])
-    _save(d)
-
-
-def respond(m: str, fam: str, bu: str, role: str, action: str, qty: float | None, reason: str) -> None:
+def respond(m: str, fam: str, bu: str, role: str, action: str, lines: dict | None, reason: str) -> None:
+    """The conversation between the S&D Head and one business unit head about a family: numbers go in region by region, channel by channel, SKU by SKU."""
     _bu(_row(m, fam), bu)
     d = _load()
     it = d["items"].get(f"{m}|{fam}|{bu}")
@@ -270,22 +269,25 @@ def respond(m: str, fam: str, bu: str, role: str, action: str, qty: float | None
     who = "BU Head" if role == "bu" else "S&D Head"
     if role != it["turn"] and not (role == "sd" and action == "final"):
         raise ValueError("It is the other side's turn.")
+    total = round(sum(it["lines"].values()))
     if action == "accept":
-        it.update(status="agreed", agreed=it["proposal"], agreed_by=f"{who} accepted", turn=None)
-        it["rounds"].append(dict(by=who, action="accept", qty=it["proposal"], reason=reason or "Accepted", at=time.time()))
-    elif action == "counter":
-        if qty is None or not reason.strip():
-            raise ValueError("A counter-offer needs a number and a reason.")
-        it.update(proposal=round(float(qty)), turn="sd" if role == "bu" else "bu")
-        it["rounds"].append(dict(by=who, action="counter", qty=round(float(qty)), reason=reason.strip(), at=time.time()))
-    elif action == "final":
-        if role != "sd":
+        it.update(status="agreed", agreed=total, proposal=total, agreed_by=f"{who} accepted", turn=None)
+        it["rounds"].append(dict(by=who, action="accept", qty=total, reason=reason or "Accepted", at=time.time()))
+    elif action in ("counter", "final"):
+        if action == "final" and role != "sd":
             raise ValueError("Only the S&D Head can make the final call.")
-        if qty is None or not reason.strip():
-            raise ValueError("A final call needs a number and a reason.")
-        q = round(float(qty))
-        it.update(status="agreed", proposal=q, agreed=q, agreed_by="S&D Head, final call", turn=None)
-        it["rounds"].append(dict(by=who, action="final", qty=q, reason=reason.strip(), at=time.time()))
+        if not reason.strip():
+            raise ValueError("A counter-offer or a final call needs a reason.")
+        new = _check_lines(it["lines"], lines)
+        old = it["lines"]
+        it["lines"] = new
+        q = round(sum(new.values()))
+        changed = sum(1 for k in new if new[k] != old.get(k))
+        if action == "final":
+            it.update(status="agreed", proposal=q, agreed=q, agreed_by="S&D Head, final call", turn=None)
+        else:
+            it.update(proposal=q, turn="sd" if role == "bu" else "bu")
+        it["rounds"].append(dict(by=who, action=action, qty=q, reason=reason.strip(), at=time.time(), changed=changed))
     else:
         raise ValueError("Unknown action.")
     _save(d)
@@ -313,22 +315,26 @@ def agreed() -> list[dict]:
     return out
 
 
+_WHAT = {"propose": "Proposed", "counter": "Countered", "accept": "Accepted", "final": "Final call", "reopen": "Reopened", "revise": "Revised"}
+
+
 def activity() -> list[dict]:
-    """Everything that has happened in the cycle, newest first: regional submissions, consolidations and every round with a unit."""
+    """Everything that has happened in the cycle, newest first: every round with a region, the hand-over to the units and every round with a unit."""
     d = _load()
     out = []
-    for k, v in d["regional"].items():
+    for k, v in d["rneg"].items():
         m, fam, reg = k.split("|")
-        out.append(dict(at=v["at"], month=m, family=fam, bu=None, who=f"{reg} Regional Head", what="Submitted", qty=v["qty"], reason=v.get("note", "")))
+        for r in v["rounds"]:
+            if r["at"]:  # the simulated opening number has no time
+                out.append(dict(at=r["at"], month=m, family=fam, bu=None, who=r["by"], what=_WHAT.get(r["action"], r["action"]), qty=r["qty"], reason=f"{reg}: {r['reason']}"))
     for k, v in d["consol"].items():
         m, fam = k.split("|")
-        out.append(dict(at=v["at"], month=m, family=fam, bu=None, who="S&D Head", what="Consolidated", qty=v["qty"], reason="Sent to the business units"))
+        out.append(dict(at=v["at"], month=m, family=fam, bu=None, who="S&D Head", what="Sent to the units", qty=v["qty"], reason="Every region agreed"))
     names = {u["bu"]: u["name"] for u in _model()["units"]}
     for k, v in d["items"].items():
         m, fam, bu = k.split("|")
         for r in v["rounds"]:
-            out.append(dict(at=r["at"], month=m, family=fam, bu=names.get(bu, bu), who=r["by"], what={"propose": "Proposed", "counter": "Countered", "accept": "Accepted", "final": "Final call", "reopen": "Reopened"}.get(r["action"], r["action"]),
-                            qty=r["qty"], reason=r["reason"]))
+            out.append(dict(at=r["at"], month=m, family=fam, bu=names.get(bu, bu), who=r["by"], what=_WHAT.get(r["action"], r["action"]), qty=r["qty"], reason=r["reason"]))
     out.sort(key=lambda x: -x["at"])
     return out
 
@@ -340,37 +346,47 @@ def _all_regions_agreed(d: dict, m: str, fam: str) -> bool:
 
 
 def _auto_consolidate(d: dict, m: str, fam: str) -> None:
-    """Once every region has agreed its numbers with the S&D Head, the family goes to the business units: the total of the
-    agreed regional numbers is shared across the units by their slice of the model."""
+    """Once every region has agreed its numbers with the S&D Head, the family goes to the business units. Each unit gets the agreed
+    numbers for the channels under it, in every region, channel by channel and SKU by SKU."""
     if f"{m}|{fam}" in d["consol"] or not _all_regions_agreed(d, m, fam):
         return
     mod = _model()
     q = 0
+    unit_lines: dict[str, dict[str, float]] = {}
     for rg in mod["regions"]:
         if any((fam, rg, u["bu"], m) in mod["cell"] for u in mod["units"]):
-            q += round(sum(_ritem(d, m, fam, rg)["lines"].values()))
+            ri = _ritem(d, m, fam, rg)
+            q += round(sum(ri["lines"].values()))
+            for k, v in ri["lines"].items():
+                unit_lines.setdefault(_bu_for(k.split("|", 1)[0]), {})[f"{rg}|{k}"] = v
     _save(d)
     d = _load()
     row = _row(m, fam)
     d["consol"][f"{m}|{fam}"] = dict(qty=q, at=time.time())
-    left = q
-    for i, b in enumerate(row["bus"]):
-        p = round(q * b["share"]) if i < len(row["bus"]) - 1 else left
-        left -= p
-        d["items"][f"{m}|{fam}|{b['bu']}"] = dict(status="negotiating", proposal=p, turn="bu", agreed=None, agreed_by=None,
-                                                   rounds=[dict(by="S&D Head", action="propose", qty=p, reason="Total of the agreed regional numbers, split by the unit's share of the model", at=time.time())])
+    for b in row["bus"]:
+        lines = unit_lines.get(b["bu"], {})
+        p = round(sum(lines.values()))
+        d["items"][f"{m}|{fam}|{b['bu']}"] = dict(status="negotiating", proposal=p, turn="bu", agreed=None, agreed_by=None, lines=lines,
+                                                   rounds=[dict(by="S&D Head", action="propose", qty=p, reason="The agreed regional numbers for this unit's channels", at=time.time())])
     _save(d)
 
 
-def _check_lines(it: dict, lines: dict | None) -> dict:
+def _check_lines(cur: dict, lines: dict | None) -> dict:
+    """A submission must carry a number for every line (region, channel and SKU as the level requires): nothing is left out."""
     if not lines:
-        raise ValueError("A counter-offer needs a number for each SKU.")
+        raise ValueError("A submission needs a number for every channel and SKU.")
     out = {}
-    for sku in it["lines"]:
-        v = lines.get(sku, it["lines"][sku])
-        if v is None or float(v) < 0:
-            raise ValueError("Every SKU needs a number of zero or more.")
-        out[sku] = round(float(v))
+    missing = 0
+    for k in cur:
+        v = lines.get(k)
+        if v is None:
+            missing += 1
+        elif float(v) < 0:
+            raise ValueError("Every number must be zero or more.")
+        else:
+            out[k] = round(float(v))
+    if missing:
+        raise ValueError(f"{missing} channel and SKU line{'s' if missing != 1 else ''} still need a number. Every line must be filled before it is submitted.")
     return out
 
 
@@ -396,7 +412,7 @@ def region_respond(m: str, fam: str, reg: str, role: str, action: str, lines: di
     elif action in ("counter", "final", "revise"):
         if not reason.strip():
             raise ValueError("A change needs a reason.")
-        new = _check_lines(it, lines)
+        new = _check_lines(it["lines"], lines)
         old = dict(it["lines"])
         it["lines"] = new
         t2 = round(sum(new.values()))
@@ -432,28 +448,72 @@ def region_lines(m: str, fam: str, reg: str) -> dict:
     desc = _desc()
     rows = []
     for x in region_skus(m, fam, reg):
-        cur = it["lines"].get(x["sku"], 0)
-        rows.append(dict(sku=x["sku"], description=desc.get(x["sku"], ""), model=round(x["model"]), last_year=round(x["last_year"]), qty=cur))
+        cur = it["lines"].get(f"{x['channel']}|{x['sku']}", 0)
+        rows.append(dict(channel=x["channel"], bu=_bu_for(x["channel"]), sku=x["sku"], description=desc.get(x["sku"], ""), model=round(x["model"]), last_year=round(x["last_year"]), qty=cur))
     return dict(month=m, family=fam, region=reg, status=it["status"], turn=it["turn"], simulated=it["simulated"], rows=rows, total=round(sum(it["lines"].values())))
 
 
+def _line_rows(m: str, fam: str, lines: dict, desc: dict) -> list[dict]:
+    """Region, channel and SKU lines with the model and last year beside the number."""
+    chan = _skumodel()["chan"]
+    names = _channel_names()
+    rows = []
+    for k, q in lines.items():
+        reg, ch, sku = k.split("|", 2)
+        mod, ly = chan.get((fam, reg, ch, sku, m), (0.0, 0.0))
+        rows.append(dict(key=k, region=reg, channel=ch, channel_name=names.get(ch, ch), sku=sku, description=desc.get(sku, ""), model=round(mod), last_year=round(ly), qty=q))
+    rows.sort(key=lambda x: (x["region"], x["channel"], -x["model"]))
+    return rows
+
+
+def _channel_names() -> dict:
+    ws = store.read_workspace() or {}
+    df = P._find(ws, "location_master", {"channel", "Channel_Name"})
+    return {} if df is None else df.drop_duplicates("channel").set_index("channel")["Channel_Name"].astype(str).to_dict()
+
+
 def bu_lines(m: str, fam: str, bu: str) -> dict:
-    """SKU by SKU for one business unit: its slice of the family number, in the unit's own SKU mix from the model."""
+    """Region by region, channel by channel and SKU by SKU for one business unit: the number now on the table."""
     row = _row(m, fam)
     b = _bu(row, bu)
-    sm = _skumodel()
-    mix: dict[str, list[float]] = {}
-    for key, (mod, ly) in sm["cell"].items():
-        if len(key) == 5 and key[0] == fam and key[3] == bu and key[4] == m:
-            a = mix.setdefault(key[2], [0.0, 0.0])
-            a[0] += mod
-            a[1] += ly
-    cur = b["agreed"] if b["agreed"] is not None else b["proposal"]
-    tm = sum(v[0] for v in mix.values()) or 1.0
+    it = _load()["items"].get(f"{m}|{fam}|{bu}")
+    rows = _line_rows(m, fam, it["lines"], _desc()) if it else []
+    return dict(month=m, family=fam, bu=bu, status=b["status"], turn=b["turn"], current=b["agreed"] if b["agreed"] is not None else b["proposal"], rows=rows)
+
+
+def final_lines(m: str, fam: str | None = None) -> list[dict]:
+    """The final forecast: every line of every family whose business units have all agreed, region by region, channel by channel and SKU by SKU."""
+    d = _load()
     desc = _desc()
-    rows = [dict(sku=k, description=desc.get(k, ""), model=round(v[0]), last_year=round(v[1]), qty=None if cur is None else round(cur * v[0] / tm), share=v[0] / tm) for k, v in mix.items()]
-    rows.sort(key=lambda x: -x["model"])
-    return dict(month=m, family=fam, bu=bu, current=cur, rows=rows)
+    out = []
+    for row in cycle()["items"]:
+        if row["month"] != m or row["agreed"] is None or (fam and row["family"] != fam):
+            continue
+        for b in row["bus"]:
+            it = d["items"].get(f"{m}|{row['family']}|{b['bu']}")
+            for x in _line_rows(m, row["family"], it["lines"] if it else {}, desc):
+                out.append(dict(x, family=row["family"], bu=b["bu"], bu_name=b["name"]))
+    return out
+
+
+def final_demand(m: str) -> dict:
+    """The final numbers in the shape the supply plan wants: units by SKU, and by SKU and region, for families that are fully agreed."""
+    by_sku: dict[str, float] = {}
+    by_reg: dict[str, dict[str, float]] = {}
+    fams = set()
+    for x in final_lines(m):
+        fams.add(x["family"])
+        by_sku[x["sku"]] = by_sku.get(x["sku"], 0.0) + x["qty"]
+        r = by_reg.setdefault(x["sku"], {})
+        r[x["region"]] = r.get(x["region"], 0.0) + x["qty"]
+    return dict(sku=by_sku, region=by_reg, families=fams)
+
+
+def final_view(m: str) -> dict:
+    """What the Final numbers tab shows: where each family stands, and every line of the families that are done."""
+    fams = [dict(family=r["family"], status=r["status"], model=r["model"], last_year=r["last_year"], final=r["agreed"], n_agreed=r["n_agreed"], n_units=len(r["bus"]))
+            for r in cycle()["items"] if r["month"] == m]
+    return dict(month=m, families=fams, lines=final_lines(m))
 
 
 def _depot_shares() -> dict:
@@ -474,25 +534,33 @@ def _depot_shares() -> dict:
 
 
 def allocation(m: str, fam: str) -> dict:
-    """What goes to which region and which depot: each region's SKU numbers (agreed, or the latest on the table) split across its
-    depots by their recent share of that SKU's dispatches."""
+    """What goes to which region and which depot: the final numbers once the family is agreed (until then the latest on the table
+    for each region), split across the region's depots by their recent share of that SKU's dispatches."""
     d = _load()
     mod = _model()
     shares = _depot_shares()
     desc = _desc()
+    final = final_lines(m, fam)
     regions, depots, cells = [], {}, []
     for reg in mod["regions"]:
         if not any((fam, reg, u["bu"], m) in mod["cell"] for u in mod["units"]):
             continue
         it = _ritem(d, m, fam, reg)
-        tot = round(sum(it["lines"].values()))
+        if final:
+            lines: dict[str, float] = {}
+            for x in final:
+                if x["region"] == reg:
+                    lines[x["sku"]] = lines.get(x["sku"], 0.0) + x["qty"]
+        else:
+            lines = {}
+            for k, v in it["lines"].items():
+                lines[k.split("|", 1)[1]] = lines.get(k.split("|", 1)[1], 0.0) + v
+        tot = round(sum(lines.values()))
         regions.append(dict(region=reg, total=tot, agreed=it["status"] == "agreed", status=it["status"]))
-        for sku, q in it["lines"].items():
+        for sku, q in lines.items():
             sh = shares.get((sku, reg)) or []
-            if not sh:
-                continue
             for s_ in sh:
                 u = round(q * s_["share"])
                 cells.append(dict(region=reg, depot=s_["depot"], city=s_["city"], sku=sku, description=desc.get(sku, ""), qty=u))
                 depots.setdefault((reg, s_["depot"]), dict(region=reg, depot=s_["depot"], city=s_["city"], qty=0))["qty"] += u
-    return dict(month=m, family=fam, regions=regions, depots=sorted(depots.values(), key=lambda x: (x["region"], -x["qty"])), cells=cells)
+    return dict(month=m, family=fam, final=bool(final), regions=regions, depots=sorted(depots.values(), key=lambda x: (x["region"], -x["qty"])), cells=cells)

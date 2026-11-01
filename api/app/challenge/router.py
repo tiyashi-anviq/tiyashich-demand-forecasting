@@ -29,26 +29,13 @@ def _run(fn, *a):
     return core.cycle()
 
 
-class Regional(BaseModel):
-    month: str
-    region: str
-    quantities: dict[str, float]
-    note: str = ""
-
-
-class Consolidate(BaseModel):
-    month: str
-    family: str
-    qty: float | None = None
-
-
 class Respond(BaseModel):
     month: str
     family: str
     bu: str
     role: str
     action: str
-    qty: float | None = None
+    lines: dict[str, float] | None = None
     reason: str = ""
 
 
@@ -70,19 +57,9 @@ def agreed():
     return core.agreed()
 
 
-@router.post("/regional")
-def regional(b: Regional):
-    return _run(core.regional_submit, b.month, b.region, b.quantities, b.note)
-
-
-@router.post("/consolidate")
-def consolidate(b: Consolidate):
-    return _run(core.consolidate, b.month, b.family, b.qty)
-
-
 @router.post("/respond")
 def respond(b: Respond):
-    return _run(core.respond, b.month, b.family, b.bu, b.role, b.action, b.qty, b.reason)
+    return _run(core.respond, b.month, b.family, b.bu, b.role, b.action, b.lines, b.reason)
 
 
 @router.post("/reopen")
@@ -171,3 +148,9 @@ def bu_lines(month: str, family: str, bu: str):
 def allocation(month: str, family: str):
     _ready()
     return clean(core.allocation(month, family))
+
+
+@router.get("/final")
+def final(month: str):
+    _ready()
+    return clean(core.final_view(month))

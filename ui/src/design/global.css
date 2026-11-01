@@ -7,6 +7,10 @@
 /* A card's grid: columns at least 24rem wide, so a row of two reflows on its own with no media query. */
 .grid { display: grid; gap: var(--cds-spacing-05); grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); }
 .grid > * { min-width: 0; }
+.seg-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--cds-spacing-04); }
+.seg-grid .card { padding: var(--cds-spacing-04); }
+.seg-grid .kpi-value { font-size: 1.5rem; line-height: 1.2; }
+.seg-grid .row-03 { align-items: baseline; flex-wrap: wrap; }
 .span-all { grid-column: 1 / -1; }
 
 /* A card's title with its one-line description under it. */
@@ -34,6 +38,8 @@
 .source-grid { display: grid; gap: var(--cds-spacing-04); grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
 .source-grid .card { min-block-size: var(--cds-spacing-12); }
 .issue-fix { min-inline-size: 16rem; }
+.table-scroll > table { inline-size: 100%; }
+.issue-fix select { min-inline-size: 100%; }
 .mapping-field { display: flex; flex-direction: column; gap: var(--cds-spacing-02); margin-block-end: var(--cds-spacing-05); }
 .mapping-sample { overflow: auto; border: 1px solid var(--reiq-border-subtle); }
 
@@ -101,7 +107,7 @@
    if there is one, pins right under that. --pinned-header-h is the height of the pinned part of the header, measured in App. */
 .module-shell-content .tabbed-view-row.tabs-sticky { top: calc(var(--cds-spacing-10) - var(--cds-spacing-03) + var(--pinned-header-h, 0px)); }
 /* Filters inside a tab pin below the tab row. */
-.module-shell-content .pin-row { position: sticky; z-index: 150; top: calc(var(--cds-spacing-10) - var(--cds-spacing-03) + var(--pinned-header-h, 0px) + var(--cds-spacing-09)); background: var(--reiq-ui-background); padding-block: var(--cds-spacing-03); border-block-end: 1px solid var(--cds-border-subtle-01, #e0e0e0); }
+.module-shell-content .pin-row { position: sticky; z-index: 150; top: calc(var(--cds-spacing-10) - var(--cds-spacing-03) + var(--pinned-header-h, 0px) + var(--tabs-h, 3rem)); background: var(--reiq-ui-background); padding-block: var(--cds-spacing-03); border-block-end: 1px solid var(--cds-border-subtle-01, #e0e0e0); }
 .module-shell-content .tabs-sticky ~ * .pin-row, .module-shell-content .pin-row { margin-block: 0; }
 
 /* run view legend: each swatch repeats the line's colour and pattern */
@@ -149,3 +155,36 @@ th.th-active { background: var(--cds-layer-active, #cfd2cf); }
 .dc-toggle:focus-visible { outline: 2px solid var(--cds-focus, #0f62fe); outline-offset: 2px; }
 .dc-folded { cursor: pointer; }
 .dc-folded:hover { background: var(--cds-layer-hover, rgba(0,0,0,0.03)); }
+
+/* Pinned, the tab row's first tab lines up with the filters above it (the header card is inset by its own padding). */
+@media (min-width: 672px) {
+
+}
+/* The filter row pinned inside a tab stays slim. */
+.module-shell-content .pin-row { padding-block: var(--cds-spacing-02); }
+
+/* A header whose filters are pinned runs edge to edge like the compact bar above it, so no tinted strips show beside the filters; its
+   contents and the tab row below keep the same left edge. */
+@media (min-width: 672px) {
+  .module-shell-content .module-page-header.module-page-header-pin-toolbar { margin-inline: calc(-1 * var(--cds-spacing-06)); padding-inline: calc(2 * var(--cds-spacing-06)); }
+  .module-shell-content:has(.module-page-header-pin-toolbar) .tabbed-view-row.tabs-sticky { width: auto; margin-inline: calc(-1 * var(--cds-spacing-06)); padding-inline: calc(2 * var(--cds-spacing-06)) var(--cds-spacing-06); }
+}
+@media (min-width: 672px) { .module-shell-content:has(.module-page-header-pin-toolbar) .tabbed-view-row.tabs-sticky[data-pinned] { padding-inline: calc(2 * var(--cds-spacing-06)) var(--cds-spacing-06); } }
+
+/* Data checks: problems to fix read red, minor notes read yellow. A coloured edge as well as a tint, so the colour is not the only signal. */
+.issue-row-red td { background: var(--cds-notification-background-error, #fff1f1); }
+.issue-row-red td:first-child { box-shadow: inset 4px 0 0 var(--cds-support-error, #da1e28); }
+.issue-row-yellow td { background: var(--cds-notification-background-warning, #fdf6dd); }
+.issue-row-yellow td:first-child { box-shadow: inset 4px 0 0 var(--cds-support-warning, #f1c21b); }
+
+/* findings: one card, a coloured edge per point */
+.findings-list { list-style: none; margin: var(--cds-spacing-04) 0 0; padding: 0; display: grid; gap: var(--cds-spacing-03); }
+.finding { display: grid; grid-template-columns: auto 1fr; gap: var(--cds-spacing-03); align-items: start; padding: var(--cds-spacing-03) var(--cds-spacing-05); border-inline-start: 4px solid var(--finding-edge); background: var(--finding-bg); }
+.finding svg { margin-block-start: 2px; fill: var(--finding-edge); }
+.finding-watch { --finding-edge: var(--cds-support-warning, #f1c21b); --finding-bg: var(--cds-notification-background-warning, #fdf6dd); }
+.finding-good { --finding-edge: var(--cds-support-success, #24a148); --finding-bg: var(--cds-notification-background-success, #defbe6); }
+.finding-note { --finding-edge: var(--cds-support-info, #0043ce); --finding-bg: var(--cds-notification-background-info, #edf5ff); }
+.findings-head { align-items: center; inline-size: 100%; }
+.findings-head .findings-toggle { margin-inline-start: auto; }
+.findings-head { flex-direction: row; justify-content: space-between; flex-wrap: nowrap; }
+.findings-head .card-title { margin: 0; }

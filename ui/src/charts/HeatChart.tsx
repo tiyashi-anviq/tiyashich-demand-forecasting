@@ -10,7 +10,7 @@ export default function HeatChart({ rows, cols, values, diverging, domain, fmt, 
   const data = rows.flatMap((r, i) => cols.flatMap((c, j) => (values[i]?.[j] === null || values[i]?.[j] === undefined ? [] : [{ group: r, key: c, value: values[i][j] as number }])))
   const options: any = {
     ...base,
-    height: CHART_HEIGHT,
+    height: `max(${CHART_HEIGHT}, ${rows.length * 2 + 9}rem)`,
     title: '',
     accessibility: { svgAriaLabel: label },
     axes: { bottom: { mapsTo: 'key', scaleType: 'labels' }, left: { mapsTo: 'group', scaleType: 'labels' } },

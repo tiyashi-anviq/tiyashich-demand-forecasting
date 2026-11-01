@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiErrorNotification, PendingLabel, useToast } from '@reiq/ui'
-import { Button, ContentSwitcher, InlineNotification, NumberInput, Switch, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag, TextInput, Tile } from '@reiq/ui/carbon'
+import { Button, ContentSwitcher, InlineNotification, NumberInput, Switch, Tag, TextInput, Tile } from '@reiq/ui/carbon'
 import { getJson, sendJson } from '../../lib/http'
 import { fmtInt, fmtN, fmtSigned } from '../../lib/format'
 import { DataCard, type Col } from '../../ui/DataCard'
 import { Delta, StatRow } from '../../ui/StatRow'
+import { LineFilter, LineGrid, lineKey } from './LineGrid'
 
 export type Role = 'regional' | 'sd' | 'bu'
 const gap = (a: number | null | undefined, b: number | null | undefined) => (a !== null && a !== undefined && b ? a / b - 1 : null)
@@ -35,9 +36,11 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
   const my = role === 'sd' ? 'sd' : 'regional'
   const mine = !locked && d.status === 'negotiating' && (d.turn === my || (role === 'regional' && d.turn === 'sd'))
   const turnMine = !locked && d.status === 'negotiating' && d.turn === my
-  const val = (r: any) => draft[r.sku] ?? r.qty
+  const val = (r: any) => draft[lineKey(r)] ?? r.qty
   const total = d.rows.reduce((a: number, r: any) => a + val(r), 0)
-  const changed = d.rows.filter((r: any) => val(r) !== r.qty).length
+  const lf = useContext(LineFilter)
+  const incomplete = d.rows.filter((r: any) => !Number.isFinite(val(r)) || val(r) < 0).length
+  const changed = lf.missing.length ? 0 : d.rows.filter((r: any) => val(r) !== r.qty).length
   const modelT = d.rows.reduce((a: number, r: any) => a + r.model, 0)
   const lyT = d.rows.reduce((a: number, r: any) => a + r.last_year, 0)
   const run = (path: string, body: any, done: string) => post.mutate({ path, body, done })
@@ -53,47 +56,24 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
   const scale = () => {
     if (!scaleTo || !d.total) return
     const k = scaleTo / d.total
-    setDraft(Object.fromEntries(d.rows.map((r: any) => [r.sku, Math.round(r.qty * k)])))
+    setDraft(Object.fromEntries(d.rows.map((r: any) => [lineKey(r), Math.round(r.qty * k)])))
   }
-  const send = (action: 'counter' | 'final' | 'revise', done: string) => run('region/respond', { role: my, action, lines: Object.fromEntries(d.rows.map((r: any) => [r.sku, val(r)])), reason }, done)
+  const send = (action: 'counter' | 'final' | 'revise', done: string) => run('region/respond', { role: my, action, lines: Object.fromEntries(d.rows.map((r: any) => [lineKey(r), val(r)])), reason }, done)
   const canEdit = mine
   return (
     <Tile className="card stack-05">
       <span className="card-heading">
-        <span className="card-title">{region}: {family}, SKU by SKU</span>
-        <span className="footnote">Model {fmtN(modelT)} units, last year {fmtN(lyT)}. Number on the table {fmtN(d.total)}, {fmtSigned(gap(d.total, modelT), 1)} against the model. {d.simulated ? 'The Regional Head\'s first number is simulated.' : ''}</span>
+        <span className="card-title">{region}: {family}, channel by channel and SKU by SKU</span>
+        <span className="footnote">Model {fmtN(modelT)} units, last year {fmtN(lyT)}. Current number {fmtN(d.total)}, {fmtSigned(gap(d.total, modelT), 1)} against the model. {d.simulated ? 'The Regional Head\'s first number is simulated.' : ''}</span>
       </span>
       <StatRow items={[
-        { label: 'Number on the table (units)', value: fmtN(d.total), sublabel: d.status === 'agreed' ? 'Agreed' : d.turn === 'sd' ? 'With the S&D Head' : 'With the Regional Head' },
+        { label: 'Current number (units)', value: fmtN(d.total), sublabel: d.status === 'agreed' ? 'Agreed' : d.turn === 'sd' ? 'With the S&D Head' : 'With the Regional Head' },
         { label: 'Against the model', value: <Delta value={gap(d.total, modelT)} text={fmtSigned(gap(d.total, modelT), 1)} />, sublabel: `Model ${fmtN(modelT)}` },
         { label: 'Against last year', value: <Delta value={gap(d.total, lyT)} text={fmtSigned(gap(d.total, lyT), 1)} />, sublabel: `Same month, ${fmtN(lyT)}` },
-        { label: 'SKUs', value: d.rows.length, sublabel: 'In this family and region' },
+        { label: 'Lines', value: d.rows.length, sublabel: `${entry.channels} channels, ${entry.skus} SKUs in this region` },
       ]} />
       {rounds.length > 0 && <DataCard id={`rr-${region}`} title="Back and forth so far" description={`Every round between the S&D Head and the ${region} Regional Head, with the reason given`} cols={roundCols} rows={rounds} itemsLabel="Rounds per page" rowKey={(r) => String(r.n)} />}
-      <div className="table-scroll thin-scroll">
-        <Table size="md" aria-label={`${region} ${family} by SKU`}>
-          <TableHead><TableRow>
-            <TableHeader>SKU</TableHeader><TableHeader>Description</TableHeader>
-            <TableHeader className="cell-num">Model (units)</TableHeader><TableHeader className="cell-num">Same month last year (units)</TableHeader>
-            <TableHeader className="cell-num">On the table (units)</TableHeader>
-            {canEdit && <TableHeader>Your number (units)</TableHeader>}
-            <TableHeader className="cell-num">Against the model (%)</TableHeader><TableHeader className="cell-num">Against last year (%)</TableHeader>
-          </TableRow></TableHead>
-          <TableBody>
-            {d.rows.map((r: any) => (
-              <TableRow key={r.sku}>
-                <TableCell>{r.sku}</TableCell><TableCell>{r.description || '–'}</TableCell>
-                <TableCell className="cell-num">{fmtInt(r.model)}</TableCell><TableCell className="cell-num">{fmtInt(r.last_year)}</TableCell>
-                <TableCell className="cell-num">{fmtInt(r.qty)}</TableCell>
-                {canEdit && <TableCell><NumberInput id={`n-${region}-${r.sku}`} size="sm" hideLabel label={`${r.sku} units`} hideSteppers min={0} step={1000} value={val(r)}
-                  onChange={(_e: unknown, { value }: { value: number | string }) => setDraft({ ...draft, [r.sku]: num(value) })} /></TableCell>}
-                <TableCell className="cell-num"><Delta value={gap(val(r), r.model)} text={fmtSigned(gap(val(r), r.model), 1)} /></TableCell>
-                <TableCell className="cell-num">{r.last_year ? <Delta value={gap(val(r), r.last_year)} text={fmtSigned(gap(val(r), r.last_year), 1)} /> : '–'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <LineGrid rows={d.rows} label={`${region} ${family} by channel and SKU`} editable={canEdit} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion={false} />
       {d.status === 'agreed' ? (
         <div className="stack-03">
           <InlineNotification kind="success" lowContrast hideCloseButton title={`Agreed at ${fmtInt(d.total)} units.`} subtitle={`${entry.agreed_by}. ${locked ? 'This family has gone to the business units, so the regional numbers are locked.' : 'It goes to the business units once every region has agreed.'}`} />
@@ -101,20 +81,20 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
         </div>
       ) : locked ? null : mine ? (
         <div className="stack-03">
-          <p className="supporting">{turnMine ? (role === 'sd' ? `The ${region} Regional Head proposes ${fmtInt(d.total)} units.` : `The S&D Head proposes ${fmtInt(d.total)} units.`) : 'You can still revise your own number before the S&D Head responds.'} Change any SKU, or scale all of them to a total, and give the reason.</p>
+          <p className="supporting">{turnMine ? (role === 'sd' ? `The ${region} Regional Head proposes ${fmtInt(d.total)} units.` : `The S&D Head proposes ${fmtInt(d.total)} units.`) : 'You can still revise your own number before the S&D Head responds.'} Every channel and SKU needs a number. Change any line, or scale all of them to a total, and give the reason.</p>
           <div className="row-03">
             <NumberInput id={`scale-${region}`} size="md" label="Scale every SKU to a total (units)" hideSteppers min={0} step={10000} value={scaleTo ?? d.total}
               onChange={(_e: unknown, { value }: { value: number | string }) => setScaleTo(num(value))} />
-            <Button kind="ghost" size="md" onClick={scale}>Spread across SKUs</Button>
+            <Button kind="ghost" size="md" disabled={lf.missing.length > 0} onClick={scale}>Spread across SKUs</Button>
           </div>
           <TextInput id={`reason-${region}`} size="md" labelText="Reason" helperText="Needed for a counter-offer, a revision or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
-          <p className="supporting">Your numbers add up to {fmtInt(total)} units ({changed} SKU{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
+          <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty, so nothing can be submitted yet. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
           <div className="row-03">
             {turnMine && <Button kind="primary" size="md" onClick={() => run('region/respond', { role: my, action: 'accept' }, `Accepted at ${fmtInt(d.total)} units`)}>Accept {fmtInt(d.total)} units</Button>}
             {turnMine
-              ? <Button kind="secondary" size="md" disabled={!reason.trim() || !changed} onClick={() => send('counter', 'Counter-offer sent')}>Send counter-offer</Button>
-              : <Button kind="secondary" size="md" disabled={!reason.trim() || !changed} onClick={() => send('revise', 'Number revised')}>Revise my number</Button>}
-            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed} onClick={() => send('final', 'Final call made')}>Make the final call</Button>}
+              ? <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', 'Counter-offer sent')}>Send counter-offer</Button>
+              : <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('revise', 'Number revised')}>Revise my number</Button>}
+            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', 'Final call made')}>Make the final call</Button>}
           </div>
         </div>
       ) : (
@@ -134,10 +114,11 @@ export function RegionsSection({ it, role, pick, onPick, stamp, onDone }: { it: 
   const chosen = regs.find((r: any) => r.region === pick) ?? regs[0]
   const cols: Col<any>[] = [
     { header: 'Region', cell: (r) => r.region, sort: (r) => r.region },
+    { header: 'Channels', num: true, cell: (r) => r.channels },
     { header: 'SKUs', num: true, cell: (r) => r.skus },
     { header: 'Model (units)', num: true, cell: (r) => fmtN(r.model), sort: (r) => r.model },
     { header: 'Same month last year (units)', num: true, cell: (r) => fmtN(r.last_year), sort: (r) => r.last_year },
-    { header: 'On the table (units)', num: true, cell: (r) => fmtN(r.qty), sort: (r) => r.qty },
+    { header: 'Current number (units)', num: true, cell: (r) => fmtN(r.qty), sort: (r) => r.qty },
     { header: 'Against the model (%)', num: true, cell: (r) => <Delta value={gap(r.qty, r.model)} text={fmtSigned(gap(r.qty, r.model), 1)} />, sort: (r) => gap(r.qty, r.model) },
     { header: 'Rounds', num: true, cell: (r) => r.rounds.length, sort: (r) => r.rounds.length },
     { header: 'Status', cell: (r) => { const s = regionStatus(r); return <Tag size="sm" type={s.type}>{s.label}</Tag> } },
@@ -145,9 +126,9 @@ export function RegionsSection({ it, role, pick, onPick, stamp, onDone }: { it: 
   return (
     <div className="stack-05">
       <InlineNotification kind={locked ? 'success' : 'info'} lowContrast hideCloseButton title={locked ? 'Every region has agreed.' : `${it.n_regions_agreed} of ${it.n_regions} regions have agreed.`}
-        subtitle={locked ? `The family total of ${fmtInt(it.consolidated)} units has gone to the business units.` : 'The S&D Head and each Regional Head go back and forth, SKU by SKU, until the region agrees. When all regions have agreed, the family goes to the business units.'} />
-      <DataCard id="regs" title="Regions" description={role === 'regional' ? 'Your region for this family' : 'One conversation per region. Select a row to open it'} cols={cols} rows={role === 'regional' ? regs.filter((r: any) => r.region === chosen?.region) : regs}
-        itemsLabel="Regions per page" rowKey={(r) => r.region} onRow={(r) => onPick(r.region)} selected={(r) => r.region === chosen?.region} />
+        subtitle={locked ? `The family total of ${fmtInt(it.consolidated)} units has gone to the business units.` : 'The S&D Head and each Regional Head go back and forth, channel by channel and SKU by SKU, until the region agrees. When all regions have agreed, the family goes to the business units.'} />
+      {role !== 'regional' && <DataCard id="regs" title="Regions" description="One conversation per region. Select a row to open it" cols={cols} rows={regs}
+        itemsLabel="Regions per page" rowKey={(r) => r.region} onRow={(r) => onPick(r.region)} selected={(r) => r.region === chosen?.region} />}
       {chosen ? <RegionPanel key={`${it.month}|${it.family}|${chosen.region}|${role}`} month={it.month} family={it.family} region={chosen.region} role={role} locked={locked} stamp={stamp} onDone={onDone} /> : null}
     </div>
   )
@@ -204,18 +185,67 @@ export function AllocationSection({ month, family, stamp }: { month: string; fam
   )
 }
 
-/** A business unit's slice of the family number, SKU by SKU, in the unit's own SKU mix. */
-export function BuLines({ month, family, bu, stamp }: { month: string; family: string; bu: string; stamp: number }) {
-  const q = useQuery({ queryKey: ['bu-lines', month, family, bu, stamp], queryFn: () => getJson<any>(`/api/challenge/bu/lines?month=${month}&family=${family}&bu=${bu}`), staleTime: 0 })
-  if (!q.data) return null
-  const cols: Col<any>[] = [
-    { header: 'SKU', cell: (r) => r.sku, sort: (r) => r.sku },
-    { header: 'Description', cell: (r) => r.description || '–' },
-    { header: 'Share of the unit (%)', num: true, cell: (r) => (r.share * 100).toFixed(1), sort: (r) => r.share },
-    { header: 'Model (units)', num: true, cell: (r) => fmtInt(r.model), sort: (r) => r.model },
-    { header: 'Same month last year (units)', num: true, cell: (r) => fmtInt(r.last_year), sort: (r) => r.last_year },
-    { header: 'Number on the table (units)', num: true, cell: (r) => (r.qty === null ? '–' : fmtInt(r.qty)), sort: (r) => r.qty },
-    { header: 'Against the model (%)', num: true, cell: (r) => { const g = gap(r.qty, r.model); return <Delta value={g} text={fmtSigned(g, 1)} /> } },
+/** A business unit's conversation with the S&D Head about one family: its channels in every region, channel by channel and SKU by SKU. */
+export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role: Role; stamp: number; onDone: (c: any) => void }) {
+  const { showToast } = useToast()
+  const q = useQuery({ queryKey: ['bu-lines', it.month, it.family, b.bu, stamp], queryFn: () => getJson<any>(`/api/challenge/bu/lines?month=${it.month}&family=${it.family}&bu=${b.bu}`), staleTime: 0 })
+  const [draft, setDraft] = useState<Record<string, number>>({})
+  const [reason, setReason] = useState('')
+  const post = useMutation({
+    mutationFn: (v: { path: string; body: any; done: string }) => sendJson<any>(`/api/challenge/${v.path}`, 'POST', { month: it.month, family: it.family, bu: b.bu, ...v.body }),
+    onSuccess: (c, v) => { onDone(c); setDraft({}); setReason(''); showToast('success', v.done) },
+  })
+  if (q.isError) return <ApiErrorNotification error={q.error} fallbackTitle="Could not load this unit's numbers" />
+  const d = q.data
+  if (!d) return <p className="supporting">Loading {b.name}...</p>
+  const my = role === 'sd' ? 'sd' : 'bu'
+  const turnMine = b.status === 'negotiating' && b.turn === my
+  const val = (r: any) => draft[r.key] ?? r.qty
+  const lf = useContext(LineFilter)
+  const incomplete = d.rows.filter((r: any) => !Number.isFinite(val(r)) || val(r) < 0).length
+  const changed = lf.missing.length ? 0 : d.rows.filter((r: any) => val(r) !== r.qty).length
+  const total = d.rows.reduce((a: number, r: any) => a + (Number.isFinite(val(r)) ? val(r) : 0), 0)
+  const modelT = d.rows.reduce((a: number, r: any) => a + r.model, 0)
+  const run = (path: string, body: any, done: string) => post.mutate({ path, body, done })
+  const send = (action: 'counter' | 'final', done: string) => run('respond', { role: my, action, lines: Object.fromEntries(d.rows.map((r: any) => [r.key, val(r)])), reason }, done)
+  const rounds = b.rounds.map((r: any, i: number) => ({ ...r, n: i + 1 }))
+  const roundCols: Col<any>[] = [
+    { header: 'Round', cell: (r) => r.n }, { header: 'By', cell: (r) => r.by },
+    { header: 'Action', cell: (r) => ACTION[r.action] ?? r.action },
+    { header: 'Total (units)', num: true, cell: (r) => fmtInt(r.qty) },
+    { header: 'Lines changed', num: true, cell: (r) => (r.changed === null || r.changed === undefined ? '–' : r.changed) },
+    { header: 'Reason', cell: (r) => r.reason },
   ]
-  return <DataCard id={`bul-${bu}`} title="SKU by SKU" description="The unit's number in its own SKU mix from the model. A counter-offer on the unit's total moves every SKU in proportion" cols={cols} rows={q.data.rows} itemsLabel="SKUs per page" rowKey={(r) => r.sku} defaultSort={{ col: 3, dir: 'desc' }} />
+  const other = b.turn === 'bu' ? `the ${b.name} head` : 'the S&D Head'
+  return (
+    <Tile className="card stack-05">
+      <span className="card-heading">
+        <span className="card-title">{b.name}: {it.family}, {it.month}</span>
+        <span className="footnote">{b.head}. Channels: {b.channels.join(', ')}. Model {fmtN(modelT)} units. Current number {fmtN(d.current)}, {fmtSigned(gap(d.current, modelT), 1)} against the model. Region by region, channel by channel, SKU by SKU.</span>
+      </span>
+      {rounds.length > 0 && <DataCard id={`rounds-${b.bu}`} title="Negotiation so far" description={`Every round with ${b.head}, with the reason given`} cols={roundCols} rows={rounds} itemsLabel="Rounds per page" rowKey={(r) => String(r.n)} />}
+      <LineGrid rows={d.rows} label={`${b.name} ${it.family} by region, channel and SKU`} editable={turnMine} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion />
+      {b.status === 'agreed' ? (
+        <div className="stack-03">
+          <InlineNotification kind="success" lowContrast hideCloseButton title={`Agreed at ${fmtInt(b.agreed)} units.`} subtitle={`${b.agreed_by}. These lines are now in the Final numbers tab.`} />
+          {role === 'sd' && <div><Button kind="tertiary" size="md" onClick={() => run('reopen', {}, 'Number reopened')}>Reopen this conversation</Button></div>}
+        </div>
+      ) : turnMine ? (
+        <div className="stack-03">
+          <p className="supporting">{role === 'bu' ? 'The S&D Head proposes' : `${b.head} counters with`} {fmtInt(b.proposal)} units. Accept it, or change any lines and counter. Every line needs a number.</p>
+          <TextInput id={`why-${b.bu}`} size="md" labelText="Reason" helperText="Needed for a counter-offer or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
+          <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
+          <div className="row-03">
+            <Button kind="primary" size="md" onClick={() => run('respond', { role: my, action: 'accept' }, `Accepted at ${fmtInt(b.proposal)} units`)}>Accept {fmtInt(b.proposal)} units</Button>
+            <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', 'Counter-offer sent')}>Send counter-offer</Button>
+            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', 'Final call made')}>Make the final call</Button>}
+          </div>
+        </div>
+      ) : (
+        <InlineNotification kind="info" lowContrast hideCloseButton title={`Waiting for ${other}.`}
+          subtitle={`${fmtInt(b.proposal)} units is on the table. ${b.turn === 'bu' ? 'Switch "Viewing as" to BU Head and pick this unit to respond.' : 'Switch "Viewing as" to S&D Head to respond.'}${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
+      )}
+      {post.isError ? <ApiErrorNotification error={post.error} fallbackTitle="Could not record that" /> : null}
+    </Tile>
+  )
 }

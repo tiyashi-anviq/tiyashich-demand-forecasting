@@ -37,7 +37,7 @@ def status():
 @router.get("/options")
 def options():
     _ready()
-    return G.serve('forecast', 'options', {}, _ver(), lambda: views.clean(views.options()))
+    return G.serve('forecast', 'options-with-family', {}, _ver(), lambda: views.clean(views.options()))
 
 
 @router.get("/outlook")

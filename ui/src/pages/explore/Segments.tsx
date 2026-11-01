@@ -57,6 +57,9 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
         const pts: any[] = d.points
         const xMax = Math.min(8, Math.max(2, ...pts.map((p) => p.adi)) * 1.05)
         const yMax = Math.min(3, Math.max(1, ...pts.map((p) => p.cv2)) * 1.05)
+        // when every series sells almost every week, the 'weeks between sales' axis is one stripe: spread the dots by variability and volume instead
+        const flat = pts.length > 0 && Math.max(...pts.map((p) => p.adi)) < 1.32
+        const vols = pts.map((p) => Math.max(1, p.vol))
         const famCols: Col<any>[] = [
           { header: 'Family', cell: (b) => b.family, sort: (b) => String(b.family).toLowerCase() },
           { header: 'Months', num: true, cell: (b) => b.months },
@@ -73,25 +76,34 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
         return (
           <>
             <Findings items={d.findings} title="What the data says" />
-            <div className="grid">
+            <div className="grid seg-grid">
               {d.summary.map((s: any) => (
-                <Tile className="card stack-03" key={s.id}>
+                <Tile className="card stack-02" key={s.id}>
                   <div className="row-03"><Tag size="sm" type={SEG_TAG[s.id]}>{s.label}</Tag><span className="footnote">{s.rule}</span></div>
-                  <span className="kpi-value">{s.count.toLocaleString('en-IN')}</span>
-                  <span className="kpi-sub">series, {fmtPct(s.volume_share, 1)} of volume</span>
+                  <div className="row-03"><span className="kpi-value">{s.count.toLocaleString('en-IN')}</span><span className="kpi-sub">series, {fmtPct(s.volume_share, 1)} of volume</span></div>
                   <p className="supporting">{s.model}</p>
-                  {s.count ? <Button kind="tertiary" size="sm" onClick={() => setOpen(s.id)}>{`Show the ${s.count.toLocaleString('en-IN')} ${s.label.toLowerCase()} series`}</Button> : null}
+                  {s.count ? <div><Button kind="ghost" size="sm" onClick={() => setOpen(s.id)}>{`Show the ${s.count.toLocaleString('en-IN')} ${s.label.toLowerCase()} series`}</Button></div> : null}
                 </Tile>
               ))}
             </div>
             {open && <SeriesView seg={d.summary.find((x: any) => x.id === open)} d={d} onClose={() => setOpen(null)} />}
             <div className="grid">
+              {flat ? (
+                <ChartCard title="How steady is each series?" subtitle="The biggest series. Each dot is one series: how much its weekly sales swing, against how much it sells."
+                  label="Variability of sale size against units sold, one dot per series"
+                  headers={['Series', 'Variability', 'Type', 'Units']} rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
+                  chart={<BubbleScatter dots={pts.map((p) => ({ group: cap(p.seg), x: p.cv2, y: Math.max(1, p.vol), r: 1 }))} tones={Object.fromEntries(SEGS.map((s) => [cap(s), SEG_TONE[s]]))}
+                    xTitle="Variability of sale size" yTitle="Units sold (log scale)" xLine={0.49} yLine={null} xMax={yMax} yMax={Math.max(...vols) * 1.5} yMin={Math.max(1, Math.min(...vols) / 1.5)} yLog rRange={[3, 4]} label="Variability of sale size against units sold, one dot per series" />}
+                  note="Every series here sells in almost every week, so the weeks-between-sales measure does not separate them and is left out. The line at 0.49 is the standard cut-off: to its left sales are steady, to its right they swing." />
+              ) : (
               <ChartCard title="How regular is each series?" subtitle="The biggest series. Each dot is one series; bigger dots sell more."
                 label="Weeks between sales against variability, one dot per series"
                 headers={['Series', 'Weeks between sales', 'Variability', 'Type', 'Units']} rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.adi.toFixed(2), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
                 chart={<BubbleScatter dots={pts.map((p) => ({ group: cap(p.seg), x: p.adi, y: p.cv2, r: p.vol }))} tones={Object.fromEntries(SEGS.map((s) => [cap(s), SEG_TONE[s]]))}
                   xTitle="Weeks between sales" yTitle="Variability of sale size" xLine={1.32} yLine={0.49} xMax={xMax} yMax={yMax} label="Weeks between sales against variability, one dot per series" />}
                 note="The lines are the standard cut-offs: 1.32 weeks between sales and 0.49 variability." />
+              
+              )}
               <ChartCard title="Mix by family" subtitle="Number of series of each type" label="Series of each type, by family"
                 headers={['Family', ...SEGS.map(cap)]} rows={d.by_family.map((r: any) => [r.family, ...SEGS.map((k) => r[k])])}
                 chart={<StackedChart labels={d.by_family.map((r: any) => r.family.split(' ')[0])} xTitle="Family" yTitle="Series (count)" fmt={(n) => String(Math.round(n))}

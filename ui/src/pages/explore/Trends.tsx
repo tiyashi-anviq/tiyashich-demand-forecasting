@@ -49,9 +49,9 @@ export default function Trends({ f, opts, onClear }: { f: Filters; opts: Options
             <ContentSwitcher size="sm" selectedIndex={BY.indexOf(by)} onChange={({ index = 0 }) => setBy(BY[index])}>
               {BY_LABEL.map((l) => <Switch key={l} name={l} text={l} />)}
             </ContentSwitcher>
-            <ChartCard title="Monthly volume over time" subtitle="Lines mark Diwali and Durga Puja months" label="Monthly volume over time"
+            <ChartCard title="Monthly volume over time" subtitle="Lines mark Diwali and Durga Puja months. When one line is far bigger than the rest, the scale is logarithmic so the small ones stay readable." label="Monthly volume over time"
               headers={t.headers} rows={t.rows}
-              chart={<TrendChart x={ms} series={series} yTitle="Units" yFmt={(n) => fmtN(n)} markers={markers} label="Monthly volume over time" />} />
+              chart={<TrendChart autoLog x={ms} series={series} yTitle="Units" yFmt={(n) => fmtN(n)} markers={markers} label="Monthly volume over time" />} />
             <div className="grid">
               <ChartCard title="Observed and trend" subtitle="The selection's monthly volume, and the long-run level under it" label="Observed volume and trend"
                 headers={dt.headers} rows={dt.rows}

@@ -44,18 +44,18 @@ def plan() -> dict:
     sku_u = pd.DataFrame(r["sku_fut"][:, :M + 1], index=r["skus"]["sku"].to_numpy()).groupby(level=0).sum()
     skus = list(sku_u.index)
     fam = t["sm"]["family"].reindex(skus)
-    # a family whose number was agreed in the forecast challenge plans on that number, not the model's, for the month it covers
-    agreed_f: dict[str, float] = {}
+    # families whose numbers were agreed in the forecast challenge plan on those final numbers, SKU by SKU, for the month they cover
+    agreed_f: set[str] = set()
+    final_reg: dict[str, dict[str, float]] = {}
     try:
         from ..challenge import core as CH
-        for row in CH.cycle()["items"]:
-            if row["month"] == fm[0] and row["agreed"] is not None and row["model"] > 0:
-                agreed_f[row["family"]] = float(row["agreed"]) / float(row["model"])
+        fin = CH.final_demand(fm[0])
+        agreed_f, final_reg = set(fin["families"]), fin["region"]
+        for sku_, q_ in fin["sku"].items():
+            if sku_ in sku_u.index:
+                sku_u.loc[sku_, 0] = q_
     except Exception:
-        agreed_f = {}
-    if agreed_f:
-        sc = fam.map(lambda f_: agreed_f.get(f_, 1.0)).to_numpy()
-        sku_u[0] = sku_u[0].to_numpy() * sc
+        agreed_f, final_reg = set(), {}
     nm = t["norms"]
     tgt = fam.map(lambda f: float((nm.loc[f, "Target_Stock_Cover_Days_Min"] + nm.loc[f, "Target_Stock_Cover_Days_Max"]) / 2) if f in nm.index else 42.5)
     short_l = fam.map(lambda f: float(nm.loc[f, "Short_Flag_Below_Cover_Days"]) if f in nm.index else 35.0)
@@ -83,6 +83,13 @@ def plan() -> dict:
     for ln, g in line_of.groupby(line_of):
         x = pan[pan["sku"].isin(list(g.index))].groupby("region")["orders_qty"].sum()
         reg_share[ln] = (x / x.sum()).to_dict() if x.sum() > 0 else {}
+        # where the line's output goes follows the final numbers' region mix for the SKUs that have one
+        fin_x: dict[str, float] = {}
+        for k_ in g.index:
+            for rg_, q_ in final_reg.get(k_, {}).items():
+                fin_x[rg_] = fin_x.get(rg_, 0.0) + q_
+        if sum(fin_x.values()) > 0:
+            reg_share[ln] = {rg_: v_ / sum(fin_x.values()) for rg_, v_ in fin_x.items()}
     plant_cap = {ln: {pl: cap_fc[ln] * sh for pl, sh in pcfg["shares"].get(ln, {pl: 1.0 / len(PL.PLANTS) for pl in PL.PLANTS}).items()} for ln in cap_fc}
     plant_rows = {(pl, ln): dict(plant=pl, state=PL.STATE.get(pl, ""), line=ln, capacity=plant_cap[ln][pl], own=[0.0] * M, made=[0.0] * M, sent=[0.0] * M, take=[0.0] * M, util=[0.0] * M) for ln in plant_cap for pl in plant_cap[ln]}
     bl = pd.Series(0.0, index=skus)  # the part of last month's need that no plant could make; it is added to this month's need

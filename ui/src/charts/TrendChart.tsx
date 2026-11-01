@@ -10,7 +10,7 @@ export type TrendPoint = { group: string; index: number }
  *  The axis title carries the unit. `markers` draw a labelled line at a position; `onPick` makes every point
  *  clickable and says which series and which position was chosen. */
 export default function TrendChart({
-  x, series, kind = 'month', yTitle, yFmt = fmtN, zero = true, markers, onPick, label, pointsAlways, dotRadius = 3, noDots = false, height = CHART_HEIGHT, legend = true,
+  x, series, kind = 'month', yTitle, yFmt = fmtN, zero = true, markers, onPick, label, pointsAlways, dotRadius = 3, noDots = false, height = CHART_HEIGHT, legend = true, autoLog = false,
 }: {
   x: string[]
   series: Series[]
@@ -30,6 +30,8 @@ export default function TrendChart({
   height?: number | string
   /** false when the page draws its own switchable legend */
   legend?: boolean
+  /** use a log scale on the vertical axis when the lines differ in size by more than about 25 times, so the small ones are not squashed against the bottom */
+  autoLog?: boolean
 }) {
   const { tone, token, base } = useChartKit()
   const ref = useRef<any>(null)
@@ -39,6 +41,15 @@ export default function TrendChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [series, x, kind],
   )
+  const means = series.map((s) => { const v = s.values.filter((n): n is number => typeof n === 'number' && isFinite(n) && n > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0 }).filter((m) => m > 0)
+  const logAxis = autoLog && series.length > 2 && means.length > 2 && Math.max(...means) / Math.min(...means) > 25
+  const allPos = series.flatMap((s) => s.values.filter((n): n is number => typeof n === 'number' && isFinite(n) && n > 0))
+  // Carbon labels every minor tick on a log axis and ignores `ticks.number`, so the labels are chosen here: 1, 2 and 5 of each power of ten
+  const logTicks = logAxis ? (() => {
+    const lo = Math.min(...allPos) / 1.5, hi = Math.max(...allPos) * 1.3, out: number[] = []
+    for (let p = Math.floor(Math.log10(lo)); p <= Math.ceil(Math.log10(hi)); p++) for (const m of [1, 2, 5]) { const v = m * 10 ** p; if (v >= lo && v <= hi) out.push(v) }
+    return out
+  })() : []
   const thresholds = (markers ?? []).filter((m) => m.i >= 0 && m.i < x.length).map((m) => ({ value: key(m.i), label: m.label, fillColor: token('color.border.strong') }))
   const options: any = {
     ...base,
@@ -49,7 +60,7 @@ export default function TrendChart({
       bottom: kind !== 'labels'
         ? { mapsTo: 'key', scaleType: 'time', title: kind === 'week' ? 'Week starting' : 'Month', thresholds, ticks: { number: 8 }, ...(x.length > 1 ? { domain: [key(0), key(x.length - 1)] } : {}) }
         : { mapsTo: 'key', scaleType: 'labels', thresholds: [] },
-      left: { mapsTo: 'value', scaleType: 'linear', title: yTitle, includeZero: zero, ticks: { number: 5, formatter: (v: number) => yFmt(+v) } },
+      left: { mapsTo: 'value', scaleType: logAxis ? 'log' : 'linear', title: logAxis ? `${yTitle} (log scale)` : yTitle, includeZero: logAxis ? false : zero, ...(logAxis ? { domain: [Math.min(...allPos) / 1.5, Math.max(...allPos) * 1.3] } : {}), ticks: { ...(logAxis ? { values: logTicks } : { number: 5 }), formatter: (v: number) => yFmt(+v) } },
     },
     timeScale: { addSpaceOnEdges: 0 },
     grid: { x: { enabled: false } },
