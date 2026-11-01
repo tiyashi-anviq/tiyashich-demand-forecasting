@@ -8,17 +8,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import quality, scan, store
+from .challenge import core as challenge_core
+from .challenge.router import router as challenge_router
+from .datasources import router as datasources_router
 from .eda.router import router as eda_router
 from .forecast.router import router as forecast_router
-from .challenge.router import router as challenge_router
-from .ported.router import router as ported_router, qc_router, npd_router, sup_router, inv_router
-from .challenge import core as challenge_core
+from .ported.router import (
+    inv_router,
+    npd_router,
+    qc_router,
+    router as ported_router,
+    sup_router,
+)
 from .schema import DATASET_TYPES, public_schema
 
 app = FastAPI(title="Eveready Demand Planning API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -29,21 +40,70 @@ app.include_router(challenge_router)
 app.include_router(ported_router)
 app.include_router(qc_router)
 app.include_router(npd_router)
+app.include_router(datasources_router)
 app.include_router(sup_router)
 app.include_router(inv_router)
 
 ALLOWED = {".xlsx", ".xlsm", ".xls", ".csv"}
-MAX_BYTES = 600 * 1024 * 1024
+MAX_BYTES = 600 * 1024 * 1024  # 600 MB
 
 SOURCES = [
-    dict(id="sap", group="Internal systems", name="SAP S/4HANA", what="Orders, invoices, purchase orders", mode="demo"),
-    dict(id="oracle", group="Internal systems", name="Oracle ERP", what="Orders, invoices, purchase orders", mode="demo"),
-    dict(id="salesforce", group="Internal systems", name="Salesforce", what="Accounts, schemes, opportunities", mode="demo"),
-    dict(id="wms", group="Internal systems", name="Warehouse system (WMS)", what="Depot stock and movements", mode="demo"),
-    dict(id="pos", group="Internal systems", name="POS and partner feeds", what="Sell-through from retailers and quick commerce", mode="demo"),
-    dict(id="weather", group="External signals", name="Weather", what="Rainfall, temperature, monsoon onset", mode="file"),
-    dict(id="market", group="External signals", name="Market audit", what="Competitor share and pricing", mode="file"),
-    dict(id="macro", group="External signals", name="Commodities and macro", what="Metal prices, exchange rate, freight", mode="file"),
+    dict(
+        id="sap",
+        group="Internal systems",
+        name="SAP S/4HANA",
+        what="Orders, invoices, purchase orders",
+        mode="demo",
+    ),
+    dict(
+        id="oracle",
+        group="Internal systems",
+        name="Oracle ERP",
+        what="Orders, invoices, purchase orders",
+        mode="demo",
+    ),
+    dict(
+        id="salesforce",
+        group="Internal systems",
+        name="Salesforce",
+        what="Accounts, schemes, opportunities",
+        mode="demo",
+    ),
+    dict(
+        id="wms",
+        group="Internal systems",
+        name="Warehouse system (WMS)",
+        what="Depot stock and movements",
+        mode="demo",
+    ),
+    dict(
+        id="pos",
+        group="Internal systems",
+        name="POS and partner feeds",
+        what="Sell-through from retailers and quick commerce",
+        mode="demo",
+    ),
+    dict(
+        id="weather",
+        group="External signals",
+        name="Weather",
+        what="Rainfall, temperature, monsoon onset",
+        mode="file",
+    ),
+    dict(
+        id="market",
+        group="External signals",
+        name="Market audit",
+        what="Competitor share and pricing",
+        mode="file",
+    ),
+    dict(
+        id="macro",
+        group="External signals",
+        name="Commodities and macro",
+        what="Metal prices, exchange rate, freight",
+        mode="file",
+    ),
 ]
 
 
@@ -59,11 +119,20 @@ def view_files(b: dict) -> list[dict]:
     out = []
     for f in b["files"].values():
         sheets = [b["sheets"][s] for s in f.get("sheets", []) if s in b["sheets"]]
-        out.append(dict(
-            id=f["id"], name=f["name"], size=f["size"], status=f["status"], progress=f.get("progress", 0),
-            error=f.get("error"), sheets=len(sheets), rows=sum(s["rows"] for s in sheets),
-            sheets_done=f.get("sheets_done"), sheets_total=f.get("sheets_total"),
-        ))
+        out.append(
+            dict(
+                id=f["id"],
+                name=f["name"],
+                size=f["size"],
+                status=f["status"],
+                progress=f.get("progress", 0),
+                error=f.get("error"),
+                sheets=len(sheets),
+                rows=sum(s["rows"] for s in sheets),
+                sheets_done=f.get("sheets_done"),
+                sheets_total=f.get("sheets_total"),
+            )
+        )
     return out
 
 
@@ -71,12 +140,24 @@ def view_groups(b: dict) -> list[dict]:
     res = []
     for g in b["groups"]:
         st = scan.group_status(g)
-        res.append(dict(
-            id=g["id"], name=g["name"], type=g["type"], confidence=g["confidence"], include=g["include"],
-            rows=g["rows"], sheet_names=g["sheet_names"], source_file=g["source_file"],
-            columns=g["columns"], mapping=g["mapping"], match_conf=g["match_conf"],
-            ok=st["ok"], missing=st["missing"], user_edited=g["user_edited"],
-        ))
+        res.append(
+            dict(
+                id=g["id"],
+                name=g["name"],
+                type=g["type"],
+                confidence=g["confidence"],
+                include=g["include"],
+                rows=g["rows"],
+                sheet_names=g["sheet_names"],
+                source_file=g["source_file"],
+                columns=g["columns"],
+                mapping=g["mapping"],
+                match_conf=g["match_conf"],
+                ok=st["ok"],
+                missing=st["missing"],
+                user_edited=g["user_edited"],
+            )
+        )
     return res
 
 
@@ -88,8 +169,13 @@ def readiness(b: dict) -> dict:
     for g in inc:
         st = scan.group_status(g)
         if not st["ok"]:
-            problems.append(f"{g['name']}: choose a column for {', '.join(st['missing'])}.")
-    busy = any(f["status"] in ("uploading", "queued", "reading") for f in b["files"].values())
+            problems.append(
+                f"{g['name']}: choose a column for {', '.join(st['missing'])}."
+            )
+    busy = any(
+        f["status"] in ("uploading", "queued", "reading")
+        for f in b["files"].values()
+    )
     if busy:
         problems.insert(0, "Files are still being read.")
     if not b["files"]:
@@ -98,6 +184,7 @@ def readiness(b: dict) -> dict:
 
 
 # ----------------------------------------------------------------------------- routes
+@app.get("/health")
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
@@ -140,7 +227,9 @@ def latest():
 @app.get("/api/batches/{bid}")
 def batch(bid: str):
     b = get_batch(bid)
-    return dict(id=b["id"], files=view_files(b), groups=view_groups(b), **readiness(b))
+    return dict(
+        id=b["id"], files=view_files(b), groups=view_groups(b), **readiness(b)
+    )
 
 
 @app.post("/api/batches/{bid}/files")
@@ -150,7 +239,9 @@ async def upload(bid: str, files: list[UploadFile] = File(...)):
     for uf in files:
         ext = Path(uf.filename or "").suffix.lower()
         if ext not in ALLOWED:
-            raise HTTPException(400, f"'{uf.filename}' is not an Excel or CSV file.")
+            raise HTTPException(
+                400, f"'{uf.filename}' is not an Excel or CSV file."
+            )
         fid = store.new_id()
         updir = store.batch_dir(bid) / "uploads"
         updir.mkdir(exist_ok=True)
@@ -162,9 +253,19 @@ async def upload(bid: str, files: list[UploadFile] = File(...)):
                 if size > MAX_BYTES:
                     out.close()
                     dest.unlink(missing_ok=True)
-                    raise HTTPException(413, f"'{uf.filename}' is larger than 600 MB.")
+                    raise HTTPException(
+                        413, f"'{uf.filename}' is larger than 600 MB."
+                    )
                 out.write(chunk)
-        b["files"][fid] = dict(id=fid, name=uf.filename, size=size, status="queued", progress=0.0, error=None, sheets=[])
+        b["files"][fid] = dict(
+            id=fid,
+            name=uf.filename,
+            size=size,
+            status="queued",
+            progress=0.0,
+            error=None,
+            sheets=[],
+        )
         store.save(b)
         scan.start_scan(bid, fid, dest)
         added.append(fid)
@@ -221,7 +322,9 @@ def edit_group(bid: str, gid: str, body: GroupEdit):
         b["quality"] = None
         b["confirm"] = None
         store.save(b)
-    return dict(group=next(x for x in view_groups(b) if x["id"] == gid), **readiness(b))
+    return dict(
+        group=next(x for x in view_groups(b) if x["id"] == gid), **readiness(b)
+    )
 
 
 @app.get("/api/batches/{bid}/groups/{gid}/preview")
@@ -236,7 +339,16 @@ def preview(bid: str, gid: str, rows: int = 5):
     df = pd.read_parquet(s["parquet"]).head(rows)
     out = []
     for r in df.to_dict("records"):
-        out.append({k: (v.strftime("%d %b %Y") if hasattr(v, "strftime") else (None if v is None or v != v else v)) for k, v in r.items()})
+        out.append(
+            {
+                k: (
+                    v.strftime("%d %b %Y")
+                    if hasattr(v, "strftime")
+                    else (None if v is None or v != v else v)
+                )
+                for k, v in r.items()
+            }
+        )
     return {"columns": list(df.columns), "rows": out}
 
 

@@ -18,7 +18,7 @@ export const regionStatus = (r: any): { label: string; type: 'gray' | 'blue' | '
   r.status === 'agreed' ? { label: 'Agreed', type: 'green' } : { label: r.turn === 'sd' ? 'With the S&D Head' : 'With the Regional Head', type: 'teal' }
 
 /** One region's numbers for one family, SKU by SKU, and the conversation between the S&D Head and that region's head. */
-export function RegionPanel({ month, family, region, role, locked, stamp, onDone }: { month: string; family: string; region: string; role: Role; locked: boolean; stamp: number; onDone: (c: any) => void }) {
+export function RegionPanel({ month, family, region, role, locked, productFilter, stamp, onDone }: { month: string; family: string; region: string; role: Role; locked: boolean; productFilter?: string | null; stamp: number; onDone: (c: any) => void }) {
   const { showToast } = useToast()
   const q = useQuery({ queryKey: ['region-lines', month, family, region, stamp], queryFn: () => getJson<any>(`/api/challenge/region/lines?month=${month}&family=${family}&region=${region}`), staleTime: 0 })
   const cycle = useQuery({ queryKey: ['challenge'], queryFn: () => getJson<any>('/api/challenge/cycle'), staleTime: 60_000 })
@@ -27,22 +27,48 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
   const [reason, setReason] = useState('')
   const post = useMutation({
     mutationFn: (v: { path: string; body: any; done: string }) => sendJson<any>(`/api/challenge/${v.path}`, 'POST', { month, family, region, ...v.body }),
-    onSuccess: (c, v) => { onDone(c); setDraft({}); setReason(''); setScaleTo(undefined); showToast('success', v.done) },
+    onSuccess: (c, v) => { 
+      // Show success toast
+      showToast('success', `✓ ${v.done}`, `${region} - ${family}`)
+      
+      // Update parent and reset form
+      onDone(c)
+      setDraft({})
+      setReason('')
+      setScaleTo(undefined)
+    },
+    onError: (error: any) => {
+      showToast('error', 'Action failed', error?.message || 'Could not complete action. Please try again.')
+    },
   })
   const d = q.data
   const entry = cycle.data?.items.find((i: any) => i.month === month && i.family === family)?.regional.find((x: any) => x.region === region)
   if (q.isPending || !d || !entry) return <p className="supporting">Loading {region}...</p>
   if (q.isError) return <ApiErrorNotification error={q.error} fallbackTitle="Could not load these numbers" />
+  
+  // Filter rows by product if productFilter is set, or show only submitted products for S&D Head
+  const allRows = d.rows
+  const submittedRows = allRows.filter((r: any) => r.submitted > 0)
+  
+  // For S&D Head: default to showing only submitted products unless productFilter is explicitly set
+  // For Regional Head: show all products
+  const filteredRows = productFilter 
+    ? allRows.filter((r: any) => r.sku === productFilter) 
+    : (role === 'sd' && submittedRows.length > 0) 
+      ? submittedRows 
+      : allRows
+  const rows = filteredRows
+  
   const my = role === 'sd' ? 'sd' : 'regional'
   const mine = !locked && d.status === 'negotiating' && (d.turn === my || (role === 'regional' && d.turn === 'sd'))
   const turnMine = !locked && d.status === 'negotiating' && d.turn === my
   const val = (r: any) => draft[lineKey(r)] ?? r.qty
-  const total = d.rows.reduce((a: number, r: any) => a + val(r), 0)
+  const total = rows.reduce((a: number, r: any) => a + val(r), 0)
   const lf = useContext(LineFilter)
-  const incomplete = d.rows.filter((r: any) => !Number.isFinite(val(r)) || val(r) < 0).length
-  const changed = lf.missing.length ? 0 : d.rows.filter((r: any) => val(r) !== r.qty).length
-  const modelT = d.rows.reduce((a: number, r: any) => a + r.model, 0)
-  const lyT = d.rows.reduce((a: number, r: any) => a + r.last_year, 0)
+  const incomplete = rows.filter((r: any) => !Number.isFinite(val(r)) || val(r) < 0).length
+  const changed = lf.missing.length ? 0 : rows.filter((r: any) => val(r) !== r.qty).length
+  const modelT = rows.reduce((a: number, r: any) => a + r.model, 0)
+  const lyT = rows.reduce((a: number, r: any) => a + r.last_year, 0)
   const run = (path: string, body: any, done: string) => post.mutate({ path, body, done })
   const rounds = entry.rounds.map((r: any, i: number) => ({ ...r, n: i + 1 }))
   const roundCols: Col<any>[] = [
@@ -56,9 +82,9 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
   const scale = () => {
     if (!scaleTo || !d.total) return
     const k = scaleTo / d.total
-    setDraft(Object.fromEntries(d.rows.map((r: any) => [lineKey(r), Math.round(r.qty * k)])))
+    setDraft(Object.fromEntries(rows.map((r: any) => [lineKey(r), Math.round(r.qty * k)])))
   }
-  const send = (action: 'counter' | 'final' | 'revise', done: string) => run('region/respond', { role: my, action, lines: Object.fromEntries(d.rows.map((r: any) => [lineKey(r), val(r)])), reason }, done)
+  const send = (action: 'counter' | 'final' | 'revise', done: string) => run('region/respond', { role: my, action, lines: Object.fromEntries(allRows.map((r: any) => [lineKey(r), val(r)])), reason }, done)
   const canEdit = mine
   return (
     <Tile className="card stack-05">
@@ -73,7 +99,7 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
         { label: 'Lines', value: d.rows.length, sublabel: `${entry.channels} channels, ${entry.skus} SKUs in this region` },
       ]} />
       {rounds.length > 0 && <DataCard id={`rr-${region}`} title="Back and forth so far" description={`Every round between the S&D Head and the ${region} Regional Head, with the reason given`} cols={roundCols} rows={rounds} itemsLabel="Rounds per page" rowKey={(r) => String(r.n)} />}
-      <LineGrid rows={d.rows} label={`${region} ${family} by channel and SKU`} editable={canEdit} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion={false} />
+      <LineGrid rows={rows} label={`${region} ${family} by channel and SKU`} editable={canEdit} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion={false} />
       {d.status === 'agreed' ? (
         <div className="stack-03">
           <InlineNotification kind="success" lowContrast hideCloseButton title={`Agreed at ${fmtInt(d.total)} units.`} subtitle={`${entry.agreed_by}. ${locked ? 'This family has gone to the business units, so the regional numbers are locked.' : 'It goes to the business units once every region has agreed.'}`} />
@@ -90,16 +116,16 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
           <TextInput id={`reason-${region}`} size="md" labelText="Reason" helperText="Needed for a counter-offer, a revision or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
           <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty, so nothing can be submitted yet. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
           <div className="row-03">
-            {turnMine && <Button kind="primary" size="md" onClick={() => run('region/respond', { role: my, action: 'accept' }, `Accepted at ${fmtInt(d.total)} units`)}>Accept {fmtInt(d.total)} units</Button>}
+            {turnMine && <Button kind="primary" size="md" onClick={() => run('region/respond', { role: my, action: 'accept' }, `✓ Accepted at ${fmtInt(d.total)} units`)}>Accept {fmtInt(d.total)} units</Button>}
             {turnMine
-              ? <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', 'Counter-offer sent')}>Send counter-offer</Button>
-              : <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('revise', 'Number revised')}>Revise my number</Button>}
-            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', 'Final call made')}>Make the final call</Button>}
+              ? <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', `Counter-offer sent: ${fmtInt(total)} units`)}>Send counter-offer</Button>
+              : <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('revise', `Number revised: ${fmtInt(total)} units`)}>Revise my number</Button>}
+            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', `✓ Final call made: ${fmtInt(total)} units`)}>Make the final call</Button>}
           </div>
         </div>
       ) : (
         <InlineNotification kind="info" lowContrast hideCloseButton title={`Waiting for ${d.turn === 'sd' ? 'the S&D Head' : `the ${region} Regional Head`}.`}
-          subtitle={`${fmtInt(d.total)} units is on the table. Switch "Viewing as" to ${d.turn === 'sd' ? 'S&D Head' : 'Regional Head and pick this region'} to respond.${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
+          subtitle={`${fmtInt(d.total)} units is on the table. Open the S&D Head tab to respond.${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
       )}
       {post.isError ? <ApiErrorNotification error={post.error} fallbackTitle="Could not record that" /> : null}
       {post.isPending ? <PendingLabel pending idle="" busy="Saving..." /> : null}
@@ -108,7 +134,7 @@ export function RegionPanel({ month, family, region, role, locked, stamp, onDone
 }
 
 /** The regions of one family: where each conversation stands, and the panel for the one picked. */
-export function RegionsSection({ it, role, pick, onPick, stamp, onDone }: { it: any; role: Role; pick: string | null; onPick: (r: string) => void; stamp: number; onDone: (c: any) => void }) {
+export function RegionsSection({ it, role, pick, onPick, productFilter, stamp, onDone }: { it: any; role: Role; pick: string | null; onPick: (r: string) => void; productFilter?: string | null; stamp: number; onDone: (c: any) => void }) {
   const locked = it.consolidated !== null
   const regs = it.regional
   const chosen = regs.find((r: any) => r.region === pick) ?? regs[0]
@@ -129,7 +155,7 @@ export function RegionsSection({ it, role, pick, onPick, stamp, onDone }: { it: 
         subtitle={locked ? `The family total of ${fmtInt(it.consolidated)} units has gone to the business units.` : 'The S&D Head and each Regional Head go back and forth, channel by channel and SKU by SKU, until the region agrees. When all regions have agreed, the family goes to the business units.'} />
       {role !== 'regional' && <DataCard id="regs" title="Regions" description="One conversation per region. Select a row to open it" cols={cols} rows={regs}
         itemsLabel="Regions per page" rowKey={(r) => r.region} onRow={(r) => onPick(r.region)} selected={(r) => r.region === chosen?.region} />}
-      {chosen ? <RegionPanel key={`${it.month}|${it.family}|${chosen.region}|${role}`} month={it.month} family={it.family} region={chosen.region} role={role} locked={locked} stamp={stamp} onDone={onDone} /> : null}
+      {chosen ? <RegionPanel key={`${it.month}|${it.family}|${chosen.region}|${role}|${productFilter}`} month={it.month} family={it.family} region={chosen.region} role={role} locked={locked} productFilter={productFilter} stamp={stamp} onDone={onDone} /> : null}
     </div>
   )
 }
@@ -193,7 +219,18 @@ export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role:
   const [reason, setReason] = useState('')
   const post = useMutation({
     mutationFn: (v: { path: string; body: any; done: string }) => sendJson<any>(`/api/challenge/${v.path}`, 'POST', { month: it.month, family: it.family, bu: b.bu, ...v.body }),
-    onSuccess: (c, v) => { onDone(c); setDraft({}); setReason(''); showToast('success', v.done) },
+    onSuccess: (c, v) => { 
+      // Show success toast
+      showToast('success', `✓ ${v.done}`, `${b.name} - ${it.family}`)
+      
+      // Update parent and reset form
+      onDone(c)
+      setDraft({})
+      setReason('')
+    },
+    onError: (error: any) => {
+      showToast('error', 'Action failed', error?.message || 'Could not complete action. Please try again.')
+    },
   })
   if (q.isError) return <ApiErrorNotification error={q.error} fallbackTitle="Could not load this unit's numbers" />
   const d = q.data
@@ -236,14 +273,14 @@ export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role:
           <TextInput id={`why-${b.bu}`} size="md" labelText="Reason" helperText="Needed for a counter-offer or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
           <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
           <div className="row-03">
-            <Button kind="primary" size="md" onClick={() => run('respond', { role: my, action: 'accept' }, `Accepted at ${fmtInt(b.proposal)} units`)}>Accept {fmtInt(b.proposal)} units</Button>
-            <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', 'Counter-offer sent')}>Send counter-offer</Button>
-            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', 'Final call made')}>Make the final call</Button>}
+            <Button kind="primary" size="md" onClick={() => run('respond', { role: my, action: 'accept' }, `✓ Accepted at ${fmtInt(b.proposal)} units`)}>Accept {fmtInt(b.proposal)} units</Button>
+            <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', `Counter-offer sent: ${fmtInt(total)} units`)}>Send counter-offer</Button>
+            {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', `✓ Final call made: ${fmtInt(total)} units`)}>Make the final call</Button>}
           </div>
         </div>
       ) : (
         <InlineNotification kind="info" lowContrast hideCloseButton title={`Waiting for ${other}.`}
-          subtitle={`${fmtInt(b.proposal)} units is on the table. ${b.turn === 'bu' ? 'Switch "Viewing as" to BU Head and pick this unit to respond.' : 'Switch "Viewing as" to S&D Head to respond.'}${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
+          subtitle={`${fmtInt(b.proposal)} units is on the table. ${b.turn === 'bu' ? 'Open the BU Unit tab and pick this unit to respond.' : 'Open the S&D Head tab to respond.'}${role === 'sd' ? ' As S&D Head you can also make the final call.' : ''}`} />
       )}
       {post.isError ? <ApiErrorNotification error={post.error} fallbackTitle="Could not record that" /> : null}
     </Tile>

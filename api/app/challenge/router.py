@@ -119,6 +119,17 @@ class RegionKey(BaseModel):
     region: str
 
 
+class FamilyKey(BaseModel):
+    month: str
+    family: str
+
+
+@router.post("/consolidate")
+def consolidate(b: FamilyKey):
+    """The S&D Head sends a family's numbers to the business units."""
+    return _run(core.consolidate, b.month, b.family)
+
+
 @router.post("/region/respond")
 def region_respond(b: RegionRespond):
     return _run(core.region_respond, b.month, b.family, b.region, b.role, b.action, b.lines, b.reason)
@@ -133,6 +144,16 @@ def region_reopen(b: RegionKey):
 def region_lines(month: str, family: str, region: str):
     _ready()
     return clean(core.region_lines(month, family, region))
+
+
+@router.get("/submissions")
+def submissions(month: str, region: str | None = None, bu: str | None = None, family: str | None = None,
+                product: str | None = None, status: str | None = None):
+    _ready()
+    try:
+        return clean(core.submissions(month, region, bu, family, product, status))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/bu/lines")
@@ -154,3 +175,10 @@ def allocation(month: str, family: str):
 def final(month: str):
     _ready()
     return clean(core.final_view(month))
+
+
+@router.get("/final/demand")
+def final_demand(month: str):
+    """Get agreed forecast values ready for supply planning integration."""
+    _ready()
+    return clean(core.final_demand(month))

@@ -35,7 +35,7 @@ export default function Procurement({ embedded }: { embedded?: boolean }) {
   return (
     <>
       <Hdr embedded={embedded} moduleLabel={MODULE} title="Procurement challenge"
-        description="Each raw-material request is checked against the plant's need, last year's use, recent use and stock cover. A request is flagged when it fails two or more checks. Synthetic data."
+        description="Each raw-material request is checked against the plant's need, last year's use, recent use and stock cover. A request is flagged when it fails two or more checks."
         toolbar={q.data ? (
           <div className="row-03">
             <Dropdown id="pc-m" size="md" titleText="Request month" label="Month" items={q.data.months} itemToString={(x: string | null) => (x ? monthLong(x) : '')} selectedItem={q.data.month} onChange={({ selectedItem }: any) => selectedItem && setMonth(selectedItem)} />

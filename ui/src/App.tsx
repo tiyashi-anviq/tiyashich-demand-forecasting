@@ -15,7 +15,6 @@ import SupplyPlan from './pages/SupplyPlan'
 
 export const MODULE = 'Demand planning'
 
-/** Measures the part of the page header that stays pinned (its filter bar) so the tab row and in-tab filters can pin right under it. */
 function usePinnedHeaderHeight() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -29,7 +28,7 @@ function usePinnedHeaderHeight() {
       if (document.documentElement.style.getPropertyValue('--tabs-h') !== tv) document.documentElement.style.setProperty('--tabs-h', tv)
     }
     set()
-    const id = window.setInterval(set, 300)  // the header can appear, grow or lose its filters after the page loads
+    const id = window.setInterval(set, 300)
     return () => { window.clearInterval(id); document.documentElement.style.setProperty('--pinned-header-h', '0px') }
   }, [pathname])
 }
@@ -37,7 +36,6 @@ function usePinnedHeaderHeight() {
 function PinnedHeader() { usePinnedHeaderHeight(); return null }
 
 const NAV: NavItem[] = [
-  // the story: bring the data in, understand it, forecast demand, test the forecast, cover demand with no history, then turn it into supply
   { to: '/data', label: 'Data setup', icon: Upload },
   { to: '/explore', label: 'Explore', icon: Analytics },
   { to: '/weather', label: 'Weather and seasons', icon: Rain },

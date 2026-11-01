@@ -24,7 +24,7 @@ export default function Explore() {
   return (
     <>
       <ModulePageHeader moduleLabel={MODULE} title="Explore your data"
-        description="What is in the cleaned data, what moves demand, and how hard each series is to forecast. Primary sales, synthetic data."
+        description="What is in the cleaned data, what moves demand, and how hard each series is to forecast. Primary sales."
         toolbar={o ? <FilterBar f={f} set={set} reset={reset} dirty={dirty} opts={o} period measure measureLocked={onOverview} /> : undefined} />
       <NeedsData base="eda" building={{ what: 'prepare your data', how: 'Joining sales with weather, festivals, promotions, market and commodity data takes about 15 seconds the first time and is saved afterwards.' }}>
         {o ? (

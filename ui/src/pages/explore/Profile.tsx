@@ -48,12 +48,12 @@ export default function Profile({ f, opts, onClear }: { f: Filters; opts: Option
           <>
             <Findings items={d.findings} title="What the data says" />
             <div className="grid">
-              <ChartCard title="Where the volume sits" subtitle="Share of the selection's units, by family and region" label="Share of units by family and region"
+              <ChartCard title="Volume Distribution" subtitle="Units by family and region" label="Volume heatmap"
                 headers={['Family', ...d.coverage.regions]} rows={d.coverage.families.map((fm: string, i: number) => [fm, ...d.coverage.volume[i].map((v: number) => fmtN(v))])}
-                chart={<HeatChart rows={d.coverage.families} cols={d.coverage.regions} values={d.coverage.volume.map((r: number[]) => r.map((v) => v / tot))} fmt={(n) => fmtPct(n, 1)} label="Share of units by family and region" legendTitle="Share of units" />} />
-              {counts('How much history each series has', 'Number of series by weeks of history', d.history, 'Weeks of history', 'Series', (k) => k.replace(' weeks', '').replace('Under ', '<'))}
-              {counts('Weeks with zero sales', "Share of a series' weeks with no sales, by number of series", d.zeros, 'Share of weeks with no sales', 'Series')}
-              {counts('When series started selling', 'New series by quarter of first sale', d.starts, 'Quarter of first sale', 'New series', (k) => k.replace(/^20/, ''))}
+                chart={<HeatChart rows={d.coverage.families} cols={d.coverage.regions} values={d.coverage.volume.map((r: number[]) => r.map((v) => v / tot))} fmt={(n) => fmtPct(n, 1)} label="Volume heatmap" legendTitle="Share" />} />
+              {counts('History Length', 'Series by weeks of data', d.history, 'Weeks of history', 'Series', (k) => k.replace(' weeks', '').replace('Under ', '<'))}
+              {counts('Zero Sales Weeks', "Series by share of weeks with no sales", d.zeros, 'Share of weeks with no sales', 'Series')}
+              {counts('Series Start Dates', 'When products began selling', d.starts, 'Quarter', 'New series', (k) => k.replace(/^20/, ''))}
             </div>
             <DataCard id="covariates" title="What we have to explain demand" description="Every covariate in the data, and how much of the history it covers"
               cols={covCols} rows={d.covariates} itemsLabel="Covariates per page" rowKey={(c) => c.id} />

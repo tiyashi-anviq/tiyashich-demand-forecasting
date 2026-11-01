@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { Filter } from '@carbon/icons-react'
 import { ApiErrorNotification, EmptyState, type AppError } from '@reiq/ui'
-import { Button, SkeletonPlaceholder, SkeletonText } from '@reiq/ui/carbon'
+import { Button, InlineNotification, SkeletonPlaceholder, SkeletonText } from '@reiq/ui/carbon'
 
 /** The shape of a screen while it loads: stat tiles, then two chart cards, the same boxes the loaded screen draws. */
 export function ViewSkeleton() {
@@ -42,8 +42,14 @@ export function ViewShell<T extends { empty?: boolean }>({
         action={onClear ? <Button kind="primary" size="md" onClick={onClear}>Clear filters</Button> : undefined} />
     )
   }
+  
+  const isRefreshing = query.isFetching && !!query.data
+  
   return (
-    <div className={`stack-05${query.isFetching ? ' pulse-refresh' : ''}`} aria-busy={query.isFetching}>
+    <div className={`stack-05${isRefreshing ? ' pulse-refresh' : ''}`} aria-busy={isRefreshing}>
+      {isRefreshing && (
+        <InlineNotification kind="info" title="Applying filters" subtitle="Loading updated data..." lowContrast hideCloseButton />
+      )}
       {query.isError && <ApiErrorNotification error={query.error} fallbackTitle="Could not refresh this view" onRetry={() => void query.refetch()} />}
       {children(d)}
     </div>

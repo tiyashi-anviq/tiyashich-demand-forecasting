@@ -16,7 +16,7 @@ export default function Forecasts() {
   return (
     <>
       <ModulePageHeader moduleLabel={MODULE} title="Forecasts"
-        description="Monthly orders received, forecast to Dec 2027 and replayed against what happened. Synthetic data."
+        description="Monthly orders received, forecast to Dec 2027 and replayed against what happened."
         toolbar={opts.data ? <FilterBar f={f} set={set} reset={reset} dirty={dirty} opts={opts.data} /> : undefined} />
       <NeedsData base="forecast" building={{ what: 'build the forecasts', how: 'This takes a few minutes the first time because every forecast is replayed as it would have looked in the past. It is kept afterwards.' }}>
         <TabbedView tabs={[

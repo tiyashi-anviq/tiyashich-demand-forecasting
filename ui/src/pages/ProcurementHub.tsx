@@ -8,7 +8,7 @@ export default function ProcurementHub() {
   return (
     <>
       <ModulePageHeader moduleLabel={MODULE} title="Procurement"
-        description="The raw materials the plan needs, and the requests to buy them: each request is checked against the plant's need, last year's use, recent use and stock cover, then costed for the minimum order and the buffer on top. Synthetic data." />
+        description="The raw materials the plan needs, and the requests to buy them: each request is checked against the plant's need, last year's use, recent use and stock cover, then costed for the minimum order and the buffer on top." />
       <TabbedView tabs={[
         { id: 'check', label: 'Order check', content: <Procurement embedded /> },
         { id: 'moq', label: 'MOQ economics', content: <MoqEconomics embedded /> },

@@ -33,7 +33,7 @@ export default function MoqEconomics({ embedded }: { embedded?: boolean }) {
   return (
     <>
       <Hdr embedded={embedded} moduleLabel={MODULE} title="MOQ economics"
-        description="Raw-material requests against what the plant needs: the units a minimum order forces, the buffer supply chain adds on top, and what holding the extra costs. Synthetic data."
+        description="Raw-material requests against what the plant needs: the units a minimum order forces, the buffer supply chain adds on top, and what holding the extra costs."
         toolbar={q.data ? (
           <div className="row-03">
             <Dropdown id="mq-m" size="md" titleText="Required month" label="Month" items={q.data.months} itemToString={(m: string | null) => (m ? monthLong(m) : '')} selectedItem={q.data.month} onChange={({ selectedItem }: any) => selectedItem && setMonth(selectedItem)} />

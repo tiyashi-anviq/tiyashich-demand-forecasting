@@ -49,24 +49,24 @@ export default function Trends({ f, opts, onClear }: { f: Filters; opts: Options
             <ContentSwitcher size="sm" selectedIndex={BY.indexOf(by)} onChange={({ index = 0 }) => setBy(BY[index])}>
               {BY_LABEL.map((l) => <Switch key={l} name={l} text={l} />)}
             </ContentSwitcher>
-            <ChartCard title="Monthly volume over time" subtitle="Lines mark Diwali and Durga Puja months. When one line is far bigger than the rest, the scale is logarithmic so the small ones stay readable." label="Monthly volume over time"
+            <ChartCard title="Monthly Volume Trends" subtitle="Diwali and Durga Puja marked. Log scale when needed for readability." label="Monthly trends"
               headers={t.headers} rows={t.rows}
-              chart={<TrendChart autoLog x={ms} series={series} yTitle="Units" yFmt={(n) => fmtN(n)} markers={markers} label="Monthly volume over time" />} />
+              chart={<TrendChart autoLog x={ms} series={series} yTitle="Units" yFmt={(n) => fmtN(n)} markers={markers} label="Monthly trends" />} />
             <div className="grid">
-              <ChartCard title="Observed and trend" subtitle="The selection's monthly volume, and the long-run level under it" label="Observed volume and trend"
+              <ChartCard title="Trend Component" subtitle="Long-run level underlying monthly variation" label="Trend analysis"
                 headers={dt.headers} rows={dt.rows}
-                chart={<TrendChart x={ms} series={parts} yTitle="Units" yFmt={(n) => fmtN(n)} label="Observed volume and trend" />} />
-              <ChartCard title="Seasonal factor" subtitle="1.00 is a typical month. What trend and season do not explain is the remainder, in the table view." label="Seasonal factor by month"
+                chart={<TrendChart x={ms} series={parts} yTitle="Units" yFmt={(n) => fmtN(n)} label="Trend analysis" />} />
+              <ChartCard title="Seasonal Pattern" subtitle="1.00 is typical. Remainder shows unexplained variation." label="Seasonality"
                 headers={dt.headers} rows={dt.rows}
-                chart={<TrendChart x={ms} series={[{ name: 'Seasonal factor', values: dc.seasonal, tone: 1 }, { name: 'Remainder factor', values: dc.remainder, tone: 5 }]} yTitle="Factor (1.00 is typical)" yFmt={(n) => n.toFixed(2)} zero={false} label="Seasonal factor by month" />} />
-              <ChartCard title="Which months are strong" subtitle="Seasonal index by family. Above 1.00 is stronger than a typical month." label="Seasonal index by family and month"
+                chart={<TrendChart x={ms} series={[{ name: 'Seasonal factor', values: dc.seasonal, tone: 1 }, { name: 'Remainder factor', values: dc.remainder, tone: 5 }]} yTitle="Factor (1.00 is typical)" yFmt={(n) => n.toFixed(2)} zero={false} label="Seasonality" />} />
+              <ChartCard title="Seasonal Strength by Month" subtitle="Above 1.00 = stronger than typical" label="Seasonal heatmap"
                 headers={['Family', ...d.months_labels]} rows={d.heatmap.map((h: any) => [h.family, ...h.index.map((v: number) => v.toFixed(2))])}
-                chart={<HeatChart rows={d.heatmap.map((h: any) => h.family)} cols={d.months_labels} values={d.heatmap.map((h: any) => h.index)} diverging domain={[0.5, 1.5]} fmt={(n) => n.toFixed(2)} legendTitle="Seasonal index" label="Seasonal index by family and month" />} />
-              <ChartCard title="The typical year" subtitle="Seasonal pattern for the whole selection: how far each month sits from a typical one" label="Typical year, seasonal pattern"
+                chart={<HeatChart rows={d.heatmap.map((h: any) => h.family)} cols={d.months_labels} values={d.heatmap.map((h: any) => h.index)} diverging domain={[0.5, 1.5]} fmt={(n) => n.toFixed(2)} legendTitle="Index" label="Seasonal heatmap" />} />
+              <ChartCard title="Annual Pattern" subtitle="Deviation from typical month" label="Annual seasonality"
                 headers={['Month', 'Factor']} rows={d.seasonal_profile.map((m: any) => [m.m, m.v.toFixed(2)])}
-                chart={<BarsChart items={d.seasonal_profile.map((m: any) => ({ label: m.m, value: m.v - 1, tone: m.v >= 1 ? 1 : 2 }))} yTitle="Against a typical month (%)" fmt={(n) => fmtSigned(n, 0)} label="Typical year, seasonal pattern" />} />
+                chart={<BarsChart items={d.seasonal_profile.map((m: any) => ({ label: m.m, value: m.v - 1, tone: m.v >= 1 ? 1 : 2 }))} yTitle="vs Typical (%)" fmt={(n) => fmtSigned(n, 0)} label="Annual seasonality" />} />
             </div>
-            <DataCard id="strengths" title="How seasonal, how trending, how fast growing" description="Strength runs from 0 (none) to 1 (dominant)"
+            <DataCard id="strengths" title="Trend & Seasonality Metrics" description="Strength: 0 (none) to 1 (dominant)"
               cols={sCols} rows={d.strengths} itemsLabel="Families per page" rowKey={(s) => s.family} />
           </>
         )

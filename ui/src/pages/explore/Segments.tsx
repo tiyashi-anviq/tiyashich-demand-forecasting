@@ -79,44 +79,86 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
             <div className="grid seg-grid">
               {d.summary.map((s: any) => (
                 <Tile className="card stack-02" key={s.id}>
-                  <div className="row-03"><Tag size="sm" type={SEG_TAG[s.id]}>{s.label}</Tag><span className="footnote">{s.rule}</span></div>
-                  <div className="row-03"><span className="kpi-value">{s.count.toLocaleString('en-IN')}</span><span className="kpi-sub">series, {fmtPct(s.volume_share, 1)} of volume</span></div>
+                  <div className="row-03">
+                    <Tag size="sm" type={SEG_TAG[s.id]}>{s.label}</Tag>
+                    <span className="footnote">{s.rule}</span>
+                  </div>
+                  <div className="row-03">
+                    <span className="kpi-value">{s.count.toLocaleString('en-IN')}</span>
+                    <span className="kpi-sub">
+                      {s.count === 1 ? 'series' : 'series'}
+                      {s.volume_share > 0.001 ? ` · ${fmtPct(s.volume_share, 1)} of volume` : ''}
+                    </span>
+                  </div>
                   <p className="supporting">{s.model}</p>
-                  {s.count ? <div><Button kind="ghost" size="sm" onClick={() => setOpen(s.id)}>{`Show the ${s.count.toLocaleString('en-IN')} ${s.label.toLowerCase()} series`}</Button></div> : null}
+                  {s.count > 0 && (
+                    <div>
+                      <Button kind="ghost" size="sm" onClick={() => setOpen(s.id)}>
+                        View {s.count.toLocaleString('en-IN')} {s.label.toLowerCase()}
+                      </Button>
+                    </div>
+                  )}
                 </Tile>
               ))}
             </div>
             {open && <SeriesView seg={d.summary.find((x: any) => x.id === open)} d={d} onClose={() => setOpen(null)} />}
+            
+            {/* Key Insights Card */}
+            <Tile className="card">
+              <h3 className="card-title">Key Insights</h3>
+              <ul className="insights-list stack-02">
+                {d.summary.map((s: any) => (
+                  <li key={s.id}>
+                    <Tag size="sm" type={SEG_TAG[s.id]}>{s.label}</Tag>
+                    <span className="supporting">
+                      {s.count.toLocaleString('en-IN')} series
+                      {s.volume_share > 0.001 ? ` (${fmtPct(s.volume_share, 0)} of volume)` : ''}
+                      {s.count > 0 ? ` — ${s.model}` : ''}
+                    </span>
+                  </li>
+                ))}
+                {d.short_history > 0 && (
+                  <li>
+                    <Tag size="sm" type="gray">Short history</Tag>
+                    <span className="supporting">{d.short_history.toLocaleString('en-IN')} series with under 1 year of data</span>
+                  </li>
+                )}
+              </ul>
+            </Tile>
+
             <div className="grid">
               {flat ? (
-                <ChartCard title="How steady is each series?" subtitle="The biggest series. Each dot is one series: how much its weekly sales swing, against how much it sells."
-                  label="Variability of sale size against units sold, one dot per series"
-                  headers={['Series', 'Variability', 'Type', 'Units']} rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
+                <ChartCard title="Series Variability vs Volume" subtitle="Each dot is one series. Colors show forecast difficulty. Switch to table view to see details."
+                  label="Variability analysis"
+                  headers={['Series', 'Variability', 'Type', 'Units']} 
+                  rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
                   chart={<BubbleScatter dots={pts.map((p) => ({ group: cap(p.seg), x: p.cv2, y: Math.max(1, p.vol), r: 1 }))} tones={Object.fromEntries(SEGS.map((s) => [cap(s), SEG_TONE[s]]))}
-                    xTitle="Variability of sale size" yTitle="Units sold (log scale)" xLine={0.49} yLine={null} xMax={yMax} yMax={Math.max(...vols) * 1.5} yMin={Math.max(1, Math.min(...vols) / 1.5)} yLog rRange={[3, 4]} label="Variability of sale size against units sold, one dot per series" />}
-                  note="Every series here sells in almost every week, so the weeks-between-sales measure does not separate them and is left out. The line at 0.49 is the standard cut-off: to its left sales are steady, to its right they swing." />
+                    xTitle="Variability (CV²)" yTitle="Units sold (log scale)" xLine={0.49} yLine={null} xMax={yMax} yMax={Math.max(...vols) * 1.5} yMin={Math.max(1, Math.min(...vols) / 1.5)} yLog rRange={[3, 4]} label="Variability analysis" />}
+                  note="Weekly sellers only. Blue (smooth) = reliable forecasts. Gray (erratic) = wider ranges needed. Cut-off at 0.49: left = steady, right = volatile." />
               ) : (
-              <ChartCard title="How regular is each series?" subtitle="The biggest series. Each dot is one series; bigger dots sell more."
-                label="Weeks between sales against variability, one dot per series"
-                headers={['Series', 'Weeks between sales', 'Variability', 'Type', 'Units']} rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.adi.toFixed(2), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
+              <ChartCard title="Series Regularity vs Variability" subtitle="Each dot is one series. Dot size = volume sold. Switch to table view for details."
+                label="Series classification"
+                headers={['Series', 'Weeks between sales', 'Variability', 'Type', 'Units']} 
+                rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.adi.toFixed(2), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
                 chart={<BubbleScatter dots={pts.map((p) => ({ group: cap(p.seg), x: p.adi, y: p.cv2, r: p.vol }))} tones={Object.fromEntries(SEGS.map((s) => [cap(s), SEG_TONE[s]]))}
-                  xTitle="Weeks between sales" yTitle="Variability of sale size" xLine={1.32} yLine={0.49} xMax={xMax} yMax={yMax} label="Weeks between sales against variability, one dot per series" />}
-                note="The lines are the standard cut-offs: 1.32 weeks between sales and 0.49 variability." />
+                  xTitle="Weeks between sales (ADI)" yTitle="Variability (CV²)" xLine={1.32} yLine={0.49} xMax={xMax} yMax={yMax} label="Series classification" />}
+                note="Four quadrants = four strategies. Bottom-left (Blue, Smooth) = weekly boost. Top-right (Red, Lumpy) = forecast at region/month level. Lines at 1.32 & 0.49 are standard cut-offs." />
               
               )}
-              <ChartCard title="Mix by family" subtitle="Number of series of each type" label="Series of each type, by family"
+              <ChartCard title="Forecast Complexity by Family" subtitle="Series count by type. More smooth (blue) = easier to forecast." label="Series complexity by family"
                 headers={['Family', ...SEGS.map(cap)]} rows={d.by_family.map((r: any) => [r.family, ...SEGS.map((k) => r[k])])}
                 chart={<StackedChart labels={d.by_family.map((r: any) => r.family.split(' ')[0])} xTitle="Family" yTitle="Series (count)" fmt={(n) => String(Math.round(n))}
-                  series={SEGS.map((k) => ({ name: cap(k), values: d.by_family.map((r: any) => r[k]), tone: SEG_TONE[k] }))} label="Series of each type, by family" />} />
+                  series={SEGS.map((k) => ({ name: cap(k), values: d.by_family.map((r: any) => r[k]), tone: SEG_TONE[k] }))} label="Series complexity by family" />}
+                note="Families with more smooth (blue) series are easier to forecast accurately. Lumpy (red) series need aggregated forecasts." />
               {d.baseline.length ? (
-                <ChartCard title="The number to beat" subtitle="Error if last year's number were the forecast, months since Oct 2025" label="Error if last year's number were the forecast, by family"
+                <ChartCard title="Naive Forecast Baseline" subtitle="Error using last year's value as forecast (test months)" label="Baseline forecast error by family"
                   headers={['Family', 'Months', 'Total error (%)', 'Under (%)', 'Over (%)']} rows={d.baseline.map((b: any) => [b.family, b.months, fmtPct(b.wape, 1), fmtPct(b.under, 1), fmtPct(b.over, 1)])}
-                  chart={<BarsChart horizontal items={d.baseline.map((b: any) => ({ label: b.family, value: b.wape }))} yTitle="Error (%)" fmt={(n) => fmtPct(n, 0)} label="Error if last year's number were the forecast, by family" />}
-                  note={d.baseline_series ? `Counting each region, SKU and channel on its own, last year's number misses by ${fmtPct(d.baseline_series.wape, 1)} over ${d.baseline_series.months} months. A real model should do better than this.` : undefined} />
+                  chart={<BarsChart horizontal items={d.baseline.map((b: any) => ({ label: b.family, value: b.wape }))} yTitle="Error (%)" fmt={(n) => fmtPct(n, 0)} label="Baseline forecast error by family" />}
+                  note={d.baseline_series ? `Overall baseline error: ${fmtPct(d.baseline_series.wape, 1)} (${d.baseline_series.months} test months). Any model should beat this naive approach.` : undefined} />
               ) : (
-                <DataCard id="baseline" title="The number to beat" description="Needs at least three test months in the selected period." cols={famCols} rows={[]} itemsLabel="Families per page" rowKey={(b) => b.family} />
+                <DataCard id="baseline" title="Naive Forecast Baseline" description="Needs at least three test months in the selected period." cols={famCols} rows={[]} itemsLabel="Families per page" rowKey={(b) => b.family} />
               )}
-              <DataCard id="models" title="What this means for the models" description="Suggested approach for each type" cols={modelCols} rows={modelRows} itemsLabel="Types per page" rowKey={(r) => r.tag} />
+              <DataCard id="models" title="Recommended Forecast Strategy" description="Model approach by series type" cols={modelCols} rows={modelRows} itemsLabel="Types per page" rowKey={(r) => r.tag} />
             </div>
           </>
         )

@@ -13,7 +13,7 @@ const ORDER = ['watch', 'good', 'note']
 
 /** What the data says: one card, points that need attention first, then good news, then notes. Each carries its own icon, label and colour edge. */
 export function Findings({ items, title }: { items: Finding[] | undefined; title: string }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   if (!items?.length) return null
   const count = (t: string) => items.filter((x) => (KIND[x.tone] ? x.tone : 'note') === t).length
   const summary = ORDER.filter((t) => count(t)).map((t) => `${count(t)} ${KIND[t].label.toLowerCase()}`).join(' · ')

@@ -16,7 +16,7 @@ export default function Weather() {
   return (
     <>
       <ModulePageHeader moduleLabel={MODULE} title="Weather and seasons"
-        description="How a weather surprise moved demand away from the baseline made just before it, and which products sell more in each season. Orders received, synthetic data."
+        description="How a weather surprise moved demand away from the baseline made just before it, and which products sell more in each season. Orders received."
         toolbar={opts.data ? <FilterBar f={f} set={set} reset={reset} dirty={dirty} opts={opts.data} /> : undefined} />
       <NeedsData base="eda" building={{ what: 'prepare your data', how: 'Joining sales with weather, festivals and promotions takes about 15 seconds the first time and is saved afterwards.' }}>
         {opts.data ? (

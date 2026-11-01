@@ -12,7 +12,6 @@ import { Findings } from '../../ui/Findings'
 import { StatRow } from '../../ui/StatRow'
 import { ViewShell } from '../../ui/ViewShell'
 
-const EST = <Tag type="cool-gray" size="sm" title="Computed from the inputs above, not an actual">Est.</Tag>
 const inr = (n: number | null | undefined) => (n === null || n === undefined ? '–' : `₹${fmtN(n)}`)
 const AUTO = 'Auto'
 const AUTO_R = 'All regions'
@@ -129,7 +128,7 @@ export default function Disruption({ f }: { f: Filters }) {
                   ] as Col<any>[]} rows={d.chain} itemsLabel="rows" rowKey={(r: any) => r.rm + r.vendor} />
               ) : null}
               <DataCard id="dsm" title="Raw materials hit" info="Each material this vendor supplies: how long stock lasts once deliveries stop, when the fallback vendor's first delivery lands, and what is still short." description={`What ${d.vendor_name} supplies, how long stock lasts and what the fallback vendor makes up`} cols={mcols} rows={d.materials} itemsLabel="materials" rowKey={(r) => r.rm}
-                note={<>The month's need is the demand forecast turned into raw material through the bill of materials. Stock is drawn down by the volume the vendor does not deliver; the fallback starts after the days to switch plus its lead time. {EST}</>} />
+                note="The month's need is the demand forecast turned into raw material through the bill of materials. Stock is drawn down by the volume the vendor does not deliver; the fallback starts after the days to switch plus its lead time. Est." />
               {d.by_plant && d.by_plant.length ? (
                 <DataCard id="dsp" title="Where the loss lands, by plant" info="Each plant's part of every line type's plan, and the share of it lost when the vendor fails. Raw-material stock is held centrally and shared out in proportion to each plant's output, so every plant loses the same share of its plan." description="Plan, output lost and sales value at risk for each plant and line type"
                   cols={[
@@ -146,7 +145,7 @@ export default function Disruption({ f }: { f: Filters }) {
               ) : null}
               <DataCard id="dsl" title="Production plan and winning back the time" info={G.utilisation + ' Winning back time = the share of the plan lost, divided by the extra share a month the higher utilisation adds.'} description="A product stops when its scarcest material runs out. The extra output is what the line gains by running at the higher utilisation." cols={lcols(d)} rows={d.lines} itemsLabel="lines" rowKey={(r) => r.line}
                 defaultSort={{ col: 3, dir: 'desc' }}
-                note={<>Lines here are line types for the whole company, with all plants added together; the plant-by-plant view is in the Plant filter above. Recovery is the lost share of the plan divided by the extra share the higher utilisation adds each month. It needs headroom: the line cannot run above 100%. Last month the data shows these lines at {d.lines.map((l: any) => `${(l.util_now * 100).toFixed(0)}%`).filter((x: string, i: number, a: string[]) => a.indexOf(x) === i).join(', ')}. {EST}</>} />
+                note={"Lines here are line types for the whole company, with all plants added together; the plant-by-plant view is in the Plant filter above. Recovery is the lost share of the plan divided by the extra share the higher utilisation adds each month. It needs headroom: the line cannot run above 100%. Last month the data shows these lines at " + d.lines.map((l: any) => `${(l.util_now * 100).toFixed(0)}%`).filter((x: string, i: number, a: string[]) => a.indexOf(x) === i).join(", ") + ". Est."} />
               <DataCard id="dst" title="Timeline" info="The planning dates the client wants: demand confirmed by the 20th (the 22nd at the latest), the production plan frozen on the 24th with room to move up or down, and purchase requests following from it. The failure and fallback dates are the scenario above." description="The planning dates for the month, and when the failure, the fallback and the recovery fall against them" cols={tl} rows={d.timeline} itemsLabel="steps" rowKey={(r) => r.when + r.event} />
             </>
           )

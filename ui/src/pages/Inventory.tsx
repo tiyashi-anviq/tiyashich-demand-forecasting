@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { ModulePageHeader } from '@reiq/ui'
-import { ComboBox, Dropdown, NumberInput, Tag, TableContainer, Tile } from '@reiq/ui/carbon'
+import { ComboBox, Dropdown, NumberInput, Tag, Tile } from '@reiq/ui/carbon'
 import { MODULE } from '../App'
 import { useBuild, useView } from '../lib/useView'
 import type { Filters } from '../lib/filters'
@@ -13,7 +13,6 @@ import { ViewShell } from '../ui/ViewShell'
 
 const ALL = 'All'
 const STATUS = ['All flagged', 'Short', 'Over-stocked', 'OK']
-const EST = <Tag type="cool-gray" size="sm" title="Computed from the numbers above, not an actual">Est.</Tag>
 
 /** What the suggested transfers would save in production, for a production time you can change. */
 function ProductionEffect({ sim }: { sim: { required: number; from_transfers: number; share: number; transit_days: number; by_product: any[] } }) {
@@ -31,8 +30,9 @@ function ProductionEffect({ sim }: { sim: { required: number; from_transfers: nu
   ]
   return (
     <>
-    <Tile className="card stack-05">
-      <TableContainer title="Effect on production planning" description={<>If the whole requirement took the production time below, how much the suggested transfers would take off it. {EST}</>} />
+    <Tile className="card">
+      <h3 className="card-heading">Effect on production planning</h3>
+      <p className="footnote">If the whole requirement took the production time below, how much the suggested transfers would take off it. Est.</p>
       <NumberInput id="iv-days" size="md" label="Production time for the whole requirement (days)" hideSteppers min={1} step={1} value={days}
         onChange={(_e: unknown, { value }: { value: number | string }) => setDays(Math.max(1, Number(value) || 1))} />
       <StatRow items={[
@@ -75,7 +75,7 @@ export default function Inventory({ embedded = false, f }: { embedded?: boolean;
     <>
       {!embedded && (
         <ModulePageHeader moduleLabel={MODULE} title="Inventory and transfers"
-          description="Stock at each depot against how fast it sells. Short and over-stocked items are flagged, with the depot-to-depot transfers and supplier orders that would balance them. Synthetic data."
+          description="Stock at each depot against how fast it sells. Short and over-stocked items are flagged, with the depot-to-depot transfers and supplier orders that would balance them."
           toolbar={toolbar} />
       )}
       {embedded && toolbar ? <div className="stack-03">{toolbar}</div> : null}

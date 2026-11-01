@@ -6,7 +6,7 @@ import { ContentSwitcher, Dropdown, Switch } from '@reiq/ui/carbon'
 import { MODULE } from '../App'
 import { getJson } from '../lib/http'
 import { useBuild } from '../lib/useView'
-import { fmtDate, fmtN, fmtPct, fmtSigned } from '../lib/format'
+import { fmtDate, fmtN, fmtPct, fmtSigned, monthLong } from '../lib/format'
 import { useView } from '../lib/useView'
 import TrendChart from '../charts/TrendChart'
 import { seriesTable, type Series } from '../charts/kit'
@@ -20,6 +20,33 @@ const ALL = 'All'
 const SPLITS = ['Category', 'Depot', 'Partner'] as const
 const WINDOWS = [{ id: '13', label: '13 weeks' }, { id: '26', label: '26 weeks' }, { id: 'all', label: 'All' }]
 const sum = (a: (number | null)[]) => a.reduce<number>((s, v) => s + (v ?? 0), 0)
+
+/** The main model's monthly forecasts for the quick-commerce (dark store) channel: what it said one, two and three months ahead, against what was ordered. */
+function ChannelForecast({ family, region }: { family: string | null; region: string | null }) {
+  const qs = new URLSearchParams({ channel: 'DARK' })
+  if (family) qs.set('family', family)
+  if (region) qs.set('region', region)
+  const q = useView<any>('forecast', 'vintages', qs.toString())
+  const d = q.data
+  if (!d || d.empty || !d.horizons) return null
+  const past: string[] = d.months, open: string[] = [...(d.latest?.months ?? [])].sort()
+  const x = [...past, ...open].map((m) => monthLong(m))
+  const pad = (v: number[], at: Record<number, number | null | undefined> = {}) => [...v, ...open.map((_, i) => at[i] ?? null)] as (number | null)[]
+  const ah = (h: string, i: number) => d.horizons[h]?.ahead?.[i]
+  const series: Series[] = [
+    { name: 'Orders received (actual)', values: pad(d.actual), tone: 1 },
+    { name: 'M1 forecast (1 month ahead)', values: pad(d.horizons.M1.forecast, { 0: ah('M1', 0) }), tone: 2 },
+    { name: 'M2 forecast (2 months ahead)', values: pad(d.horizons.M2.forecast, { 1: ah('M2', 1) }), tone: 5 },
+    { name: 'M3 forecast (3 months ahead)', values: pad(d.horizons.M3.forecast, { 2: ah('M3', 2) }), tone: 3 },
+  ]
+  const t = seriesTable('Month', x, series, fmtN)
+  return (
+    <ChartCard title="Monthly forecast for the quick-commerce channel" subtitle={`Dark stores and quick commerce${family ? `, ${family}` : ', all categories'}${region ? `, ${region} region` : ''}. M1, M2 and M3 are the forecasts made one, two and three months before each month.`}
+      label="Quick-commerce channel: orders received against M1, M2 and M3 forecasts" headers={t.headers} rows={t.rows}
+      chart={<TrendChart kind="labels" x={x} series={series} yTitle="Units per month" yFmt={(n) => fmtN(n)} zero={false} pointsAlways label="Quick-commerce channel: orders received against M1, M2 and M3 forecasts" />}
+      note="The last three points are the months still open: October is the M1 forecast, November the M2 and December the M3. The category filter narrows it to that product family and the depot filter to that depot's region. Partners are not in the main sales data, so the partner filter does not apply here." />
+  )
+}
 
 export default function QuickCommerce() {
   const build = useBuild('eda')
@@ -38,9 +65,9 @@ export default function QuickCommerce() {
   return (
     <>
       <ModulePageHeader moduleLabel={MODULE} title="Quick commerce and OTIF"
-        description="What quick-commerce partners ask for against what they actually sell, how well we deliver it, and what to ship instead. Synthetic data."
+        description="What quick-commerce partners ask for against what they actually sell, how well we deliver it, and what to ship instead."
         toolbar={opts.data ? (
-          <div className="row-03">
+          <div className="filter-bar" role="group" aria-label="Filters">
             {pick('qc-d', 'Depot', opts.data.depots, depot, setDepot)}
             {pick('qc-c', 'Category', opts.data.categories, cat, setCat)}
             {pick('qc-p', 'Partner', opts.data.partners, partner, setPartner)}
@@ -104,6 +131,7 @@ export default function QuickCommerce() {
                   chart={<TrendChart x={x} series={series} kind="week" yTitle="Units per week" label="Weekly quick-commerce orders, confirmations, sell-out and recommended shipment" dotRadius={2} />}
                   headers={t1.headers} rows={t1.rows}
                   note={`Partners asked for ${so ? (po / so).toFixed(1) : '–'}× what they sold to shoppers, and we confirmed ${fmtPct(po ? cf / po : null, 0)} of it. The gap does not disappear: it builds up as stock at the partner. Shipping only the recent sell-out plus ${buf} week${buf === '1' ? '' : 's'} of cover would have missed ${lost > 0 ? `${fmtN(lost)} units` : 'nothing'} of the ${fmtN(soW)} sold since ${cw.length ? fmtDate(d.weeks[cw[0]]) : '–'}. The recommendation uses the average of the last four weeks' sell-out as the forecast.`} />
+                <ChannelForecast family={cat !== ALL ? cat : null} region={depot !== ALL ? opts.data?.depot_region?.[depot] ?? null : null} />
                 {d.otif ? (
                   <ChartCard title="Delivery performance" subtitle="Weekly rates, all channels"
                     label="Weekly fill rate, on-time rate and OTIF"

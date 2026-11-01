@@ -102,11 +102,255 @@ export default function Planner() {
                 { label: 'Expected weekly sales once settled (units)', value: fmtN(d.blend), sublabel: 'From what already sells in the market category. Est.' },
                 { label: 'Market category (units per week)', value: fmtN(e.market_week), sublabel: `${e.category}, all brands, on our invoicing scale` },
                 { label: 'Share of the category', value: e.share >= 0.001 ? `${(e.share * 100).toFixed(1)}%` : '<0.1%', sublabel: e.incumbent ? 'What one Eveready product gets today' : 'A challenger brand, as Eveready is not here yet' },
+                {
+                  label: 'Market position',
+                  value: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 600 }}>
+                        {e.price_index < 0.8 ? 'Budget' : e.price_index > 1.2 ? 'Premium' : 'Mid-range'}
+                      </span>
+                    </div>
+                  ),
+                  sublabel: `Price at ${e.price_index.toFixed(2)}× category average`,
+                  info: 'Positioning based on price vs market average and reach'
+                },
               ] : [
                 { label: 'Expected weekly sales once settled (units)', value: fmtN(d.blend), sublabel: 'From Eveready\'s own range. Est.' },
                 { label: 'Range (units per week)', value: `${fmtN(d.low)} to ${fmtN(d.high)}`, sublabel: 'From the quieter to the busier of the closest products' },
                 { label: base ? 'Product being upgraded (units per week)' : 'Closest product in our range (units per week)', value: d.matches[0] ? fmtN(d.matches[0].weekly) : '–', sublabel: d.matches[0] ? d.matches[0].name : 'No settled product matches' },
+                { 
+                  label: 'Best match similarity', 
+                  value: d.matches[0] ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 600 }}>{d.matches[0].score.toFixed(0)}</span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--cds-text-secondary)' }}>/100</span>
+                    </div>
+                  ) : '–', 
+                  sublabel: d.matches[0] ? 'Based on family, sub-category, and price match' : 'No matches found',
+                  info: 'Similarity score: Family (50 pts), Sub-category (30 pts), Price (20 pts)'
+                },
               ]} />
+              {/* Similarity Index Card - shown for BOTH modes */}
+              {nr && e ? (
+                /* New Range Mode: Market-based similarity */
+                <div className="card" style={{ padding: '1.5rem', background: 'var(--cds-layer-01)', borderRadius: '4px', borderLeft: '4px solid var(--cds-interactive)' }}>
+                  <h3 className="card-title" style={{ marginBottom: '1rem' }}>Market Similarity Analysis</h3>
+                  <p className="supporting" style={{ marginBottom: '1.5rem' }}>
+                    How your product compares to the <strong>{e.category}</strong> market based on input features
+                  </p>
+                  
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {/* Price Positioning */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Price Positioning</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                          {e.price_index.toFixed(2)}× market average
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+                        {/* Market average line */}
+                        <div style={{ position: 'absolute', left: '50%', width: '2px', height: '100%', background: 'var(--cds-text-primary)', zIndex: 1 }} />
+                        <div style={{ 
+                          width: `${Math.min(100, (e.price_index / 2) * 100)}%`, 
+                          height: '100%', 
+                          background: e.price_index < 0.8 ? 'var(--cds-support-info)' : 
+                                     e.price_index > 1.2 ? 'var(--cds-support-warning)' : 
+                                     'var(--cds-support-success)',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                        Your price: ₹{r0(price)} vs Market avg: ₹{r0(e.price)} → 
+                        {e.price_index < 0.8 ? ' Budget segment' : 
+                         e.price_index > 1.2 ? ' Premium segment' : ' Mid-market'}
+                      </p>
+                    </div>
+
+                    {/* Market Reach */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Distribution Reach</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                          {nd}% of best-covered brand
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: `${nd}%`, 
+                          height: '100%', 
+                          background: nd >= 80 ? 'var(--cds-support-success)' : 
+                                     nd >= 50 ? 'var(--cds-support-warning)' : 
+                                     'var(--cds-support-error)',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                        {e.incumbent ? 
+                          `Eveready already in this market (${(e.eveready_share * 100).toFixed(1)}% share)` : 
+                          'Eveready entering new category'}
+                      </p>
+                    </div>
+
+                    {/* Expected Market Share */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Projected Market Share</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                          {e.share >= 0.001 ? `${(e.share * 100).toFixed(1)}%` : '<0.1%'}
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: `${Math.min(100, e.share * 100 * 10)}%`, 
+                          height: '100%', 
+                          background: 'var(--cds-interactive)',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                        Based on {e.incumbent ? 'Eveready\'s current' : 'challenger brand'} performance in {e.category}
+                      </p>
+                    </div>
+
+                    {/* Competitive Landscape */}
+                    <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'var(--cds-layer-02)', borderRadius: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Competitive Landscape</span>
+                          <p className="footnote" style={{ margin: '0.25rem 0 0 0', color: 'var(--cds-text-secondary)' }}>
+                            {e.brands.length} brands competing • Market: {fmtN(e.market_week)} units/week
+                          </p>
+                        </div>
+                        <Tag 
+                          type={e.incumbent ? 'green' : 'purple'}
+                          size="md"
+                        >
+                          {e.incumbent ? 'Existing Market' : 'New Entry'}
+                        </Tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : !nr && d.matches[0] ? (
+                /* Upgrade Mode: Product similarity (existing) */
+                <div className="card" style={{ padding: '1.5rem', background: 'var(--cds-layer-01)', borderRadius: '4px', borderLeft: '4px solid var(--cds-interactive)' }}>
+                  <h3 className="card-title" style={{ marginBottom: '1rem' }}>Similarity Index: {d.matches[0].score.toFixed(0)}/100</h3>
+                  <p className="supporting" style={{ marginBottom: '1.5rem' }}>
+                    How similar is your new product to <strong>{d.matches[0].name}</strong> based on input features
+                  </p>
+                  
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {/* Family Match */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Family Match</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                          {d.matches[0].family === fam ? '50/50' : '0/50'}
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: d.matches[0].family === fam ? '100%' : '0%', 
+                          height: '100%', 
+                          background: d.matches[0].family === fam ? 'var(--cds-support-success)' : 'var(--cds-support-error)',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                        {d.matches[0].family === fam ? `✓ Same family: ${fam}` : `✗ Different family: ${d.matches[0].family}`}
+                      </p>
+                    </div>
+
+                    {/* Sub-category Match */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Sub-category Match</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                          {d.matches[0].sub && sub !== ANY && d.matches[0].sub === sub ? '30/30' : 
+                           d.matches[0].sub && sub !== ANY ? '0/30' : '0/30 (not specified)'}
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: d.matches[0].sub && sub !== ANY && d.matches[0].sub === sub ? '100%' : '0%', 
+                          height: '100%', 
+                          background: d.matches[0].sub && sub !== ANY && d.matches[0].sub === sub ? 'var(--cds-support-success)' : 
+                                     sub === ANY ? 'var(--cds-support-warning)' : 'var(--cds-support-error)',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                        {sub === ANY ? '– Sub-category not selected' : 
+                         d.matches[0].sub === sub ? `✓ Same sub-category: ${sub}` : 
+                         `✗ Different: ${d.matches[0].sub || 'None'}`}
+                      </p>
+                    </div>
+
+                    {/* Price Similarity */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Price Similarity</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                          {(() => {
+                            const priceDiff = Math.abs(price - d.matches[0].price) / d.matches[0].price
+                            const priceScore = Math.max(0, 20 * (1 - priceDiff))
+                            return `${priceScore.toFixed(0)}/20`
+                          })()}
+                        </span>
+                      </div>
+                      <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: (() => {
+                            const priceDiff = Math.abs(price - d.matches[0].price) / d.matches[0].price
+                            return `${Math.max(0, 100 * (1 - priceDiff))}%`
+                          })(), 
+                          height: '100%', 
+                          background: (() => {
+                            const priceDiff = Math.abs(price - d.matches[0].price) / d.matches[0].price
+                            return priceDiff < 0.1 ? 'var(--cds-support-success)' : 
+                                   priceDiff < 0.3 ? 'var(--cds-support-warning)' : 'var(--cds-support-error)'
+                          })(),
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                        Your price: ₹{r0(price)} vs Match: ₹{r0(d.matches[0].price)} 
+                        {(() => {
+                          const diff = ((price - d.matches[0].price) / d.matches[0].price * 100)
+                          return ` (${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)`
+                        })()}
+                      </p>
+                    </div>
+
+                    {/* Overall Confidence */}
+                    <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'var(--cds-layer-02)', borderRadius: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Confidence Level</span>
+                          <p className="footnote" style={{ margin: '0.25rem 0 0 0', color: 'var(--cds-text-secondary)' }}>
+                            {d.matches[0].score >= 80 ? 'High - Strong similarity to existing product' :
+                             d.matches[0].score >= 60 ? 'Medium - Moderate similarity, use with caution' :
+                             d.matches[0].score >= 40 ? 'Low - Weak similarity, results may vary' :
+                             'Very Low - Consider as rough estimate only'}
+                          </p>
+                        </div>
+                        <Tag 
+                          type={d.matches[0].score >= 80 ? 'green' :
+                                d.matches[0].score >= 60 ? 'teal' :
+                                d.matches[0].score >= 40 ? 'warm-gray' : 'red'}
+                          size="md"
+                        >
+                          {d.matches[0].score >= 80 ? 'High' : 
+                           d.matches[0].score >= 60 ? 'Medium' : 
+                           d.matches[0].score >= 40 ? 'Low' : 'Very Low'}
+                        </Tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               <ChartCard title="Simulated sales after launch" info="The expected weekly sales once settled, shaped by how comparable launches built up over their first 12 months. The band is the quieter to the busier of the closest products." subtitle={`Launching in ${d.month}. Units per week`}
                 chart={<TrendChart kind="labels" zero x={d.sim.months} series={[
                   { name: 'Expected', values: d.sim.expected, tone: 1 },
@@ -121,8 +365,130 @@ export default function Planner() {
                 <DataCard id="npb" title={`Competitors in ${e.category}`} description={`Last 12 months${d.scope.regions.length ? `, ${d.scope.regions.join(' and ')}` : ', all regions'}`} cols={bcols} rows={e.brands} itemsLabel="brands" rowKey={(r) => r.brand} defaultSort={{ col: 1, dir: 'desc' }}
                   note="Source: the market audit. Reach is the average share of stores that stock the brand. Eveready's own units in the audit are on a different scale from our invoices, so they are scaled by the ratio between the two." />
               ) : null}
-              {!nr ? <DataCard id="npm" title="Closest matches in our range" description="Scored on family (50), sub-category (30) and price (20)" cols={mcols} rows={d.matches} itemsLabel="products" rowKey={(r) => r.sku} defaultSort={{ col: 4, dir: 'desc' }}
-                note={`${d.borrowed ? 'This family has too few settled products, so the whole range is used. ' : ''}A product launched in the last 13 weeks is left out because its sales have not settled. The weekly figure is each product's average orders over its last 13 weeks in the chosen region and channel. This is a starting point for a plan, not a forecast.`} /> : null}
+              {!nr && d.matches[0] ? (
+                <>
+                  {/* Similarity Index Breakdown */}
+                  <div className="card" style={{ padding: '1.5rem', background: 'var(--cds-layer-01)', borderRadius: '4px', borderLeft: '4px solid var(--cds-interactive)' }}>
+                    <h3 className="card-title" style={{ marginBottom: '1rem' }}>Similarity Index: {d.matches[0].score.toFixed(0)}/100</h3>
+                    <p className="supporting" style={{ marginBottom: '1.5rem' }}>
+                      How similar is your new product to <strong>{d.matches[0].name}</strong> based on input features
+                    </p>
+                    
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                      {/* Family Match */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Family Match</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                            {d.matches[0].family === fam ? '50/50' : '0/50'}
+                          </span>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            width: d.matches[0].family === fam ? '100%' : '0%', 
+                            height: '100%', 
+                            background: d.matches[0].family === fam ? 'var(--cds-support-success)' : 'var(--cds-support-error)',
+                            transition: 'width 0.3s'
+                          }} />
+                        </div>
+                        <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                          {d.matches[0].family === fam ? `✓ Same family: ${fam}` : `✗ Different family: ${d.matches[0].family}`}
+                        </p>
+                      </div>
+
+                      {/* Sub-category Match */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Sub-category Match</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                            {d.matches[0].sub && sub !== ANY && d.matches[0].sub === sub ? '30/30' : 
+                             d.matches[0].sub && sub !== ANY ? '0/30' : '0/30 (not specified)'}
+                          </span>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            width: d.matches[0].sub && sub !== ANY && d.matches[0].sub === sub ? '100%' : '0%', 
+                            height: '100%', 
+                            background: d.matches[0].sub && sub !== ANY && d.matches[0].sub === sub ? 'var(--cds-support-success)' : 
+                                       sub === ANY ? 'var(--cds-support-warning)' : 'var(--cds-support-error)',
+                            transition: 'width 0.3s'
+                          }} />
+                        </div>
+                        <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                          {sub === ANY ? '– Sub-category not selected' : 
+                           d.matches[0].sub === sub ? `✓ Same sub-category: ${sub}` : 
+                           `✗ Different: ${d.matches[0].sub || 'None'}`}
+                        </p>
+                      </div>
+
+                      {/* Price Similarity */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Price Similarity</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                            {(() => {
+                              const priceDiff = Math.abs(price - d.matches[0].price) / d.matches[0].price
+                              const priceScore = Math.max(0, 20 * (1 - priceDiff))
+                              return `${priceScore.toFixed(0)}/20`
+                            })()}
+                          </span>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--cds-layer-02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            width: (() => {
+                              const priceDiff = Math.abs(price - d.matches[0].price) / d.matches[0].price
+                              return `${Math.max(0, 100 * (1 - priceDiff))}%`
+                            })(), 
+                            height: '100%', 
+                            background: (() => {
+                              const priceDiff = Math.abs(price - d.matches[0].price) / d.matches[0].price
+                              return priceDiff < 0.1 ? 'var(--cds-support-success)' : 
+                                     priceDiff < 0.3 ? 'var(--cds-support-warning)' : 'var(--cds-support-error)'
+                            })(),
+                            transition: 'width 0.3s'
+                          }} />
+                        </div>
+                        <p className="footnote" style={{ marginTop: '0.25rem', color: 'var(--cds-text-secondary)' }}>
+                          Your price: ₹{r0(price)} vs Match: ₹{r0(d.matches[0].price)} 
+                          {(() => {
+                            const diff = ((price - d.matches[0].price) / d.matches[0].price * 100)
+                            return ` (${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)`
+                          })()}
+                        </p>
+                      </div>
+
+                      {/* Overall Confidence */}
+                      <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'var(--cds-layer-02)', borderRadius: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Confidence Level</span>
+                            <p className="footnote" style={{ margin: '0.25rem 0 0 0', color: 'var(--cds-text-secondary)' }}>
+                              {d.matches[0].score >= 80 ? 'High - Strong similarity to existing product' :
+                               d.matches[0].score >= 60 ? 'Medium - Moderate similarity, use with caution' :
+                               d.matches[0].score >= 40 ? 'Low - Weak similarity, results may vary' :
+                               'Very Low - Consider as rough estimate only'}
+                            </p>
+                          </div>
+                          <Tag 
+                            type={d.matches[0].score >= 80 ? 'green' : 
+                                  d.matches[0].score >= 60 ? 'teal' : 
+                                  d.matches[0].score >= 40 ? 'warm-gray' : 'red'}
+                            size="md"
+                          >
+                            {d.matches[0].score >= 80 ? 'High' : 
+                             d.matches[0].score >= 60 ? 'Medium' : 
+                             d.matches[0].score >= 40 ? 'Low' : 'Very Low'}
+                          </Tag>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Existing matches table */}
+                  <DataCard id="npm" title="All matches in our range" description="Scored on family (50), sub-category (30) and price (20)" cols={mcols} rows={d.matches} itemsLabel="products" rowKey={(r) => r.sku} defaultSort={{ col: 4, dir: 'desc' }}
+                    note={`${d.borrowed ? 'This family has too few settled products, so the whole range is used. ' : ''}A product launched in the last 13 weeks is left out because its sales have not settled. The weekly figure is each product's average orders over its last 13 weeks in the chosen region and channel. This is a starting point for a plan, not a forecast.`} />
+                </>
+              ) : null}
               {!nr && d.borrowed ? <Tag type="gray" size="md">Own-range view is weak for this family</Tag> : null}
             </>
           )

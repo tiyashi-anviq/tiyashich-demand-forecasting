@@ -46,12 +46,27 @@ export function queryOf(f: Filters, opts: Options | undefined, extra: Record<str
   if (f.channel.length) q.set('channel', f.channel.join('~'))
   if (f.product.length) q.set('product', f.product.join('~'))
   if (withMeasure) q.set('measure', f.measure)
+  
+  // Period conversion with proper date_to handling
   if (opts?.date_to) {
-    if (f.period === 'last12') q.set('date_from', addMonths(opts.date_to, -12))
-    if (f.period === 'last24') q.set('date_from', addMonths(opts.date_to, -24))
+    const dateTo = opts.date_to
+    if (f.period === 'last12') {
+      q.set('date_from', addMonths(dateTo, -12))
+      q.set('date_to', dateTo)
+    } else if (f.period === 'last24') {
+      q.set('date_from', addMonths(dateTo, -24))
+      q.set('date_to', dateTo)
+    } else if (f.period === 'train') {
+      q.set('date_to', '2025-09-30')
+    } else if (f.period === 'test') {
+      q.set('date_from', '2025-10-01')
+    } else if (f.period === 'all') {
+      // Explicitly set full range for 'all'
+      if (opts.date_from) q.set('date_from', opts.date_from)
+      q.set('date_to', dateTo)
+    }
   }
-  if (f.period === 'train') q.set('date_to', '2025-09-30')
-  if (f.period === 'test') q.set('date_from', '2025-10-01')
+  
   Object.entries(extra).forEach(([k, v]) => q.set(k, v))
   return q.toString()
 }

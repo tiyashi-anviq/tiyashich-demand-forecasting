@@ -10,11 +10,8 @@ import { Delta, StatRow } from '../../ui/StatRow'
 import { Findings } from '../../ui/Findings'
 import { ViewShell } from '../../ui/ViewShell'
 
-const PER: Record<string, string> = { last12: 'last 12 months', last24: 'last 24 months', train: 'training period (to Sep 2025)', test: 'test period (Oct 2025 on)' }
-
 export default function Overview({ f, opts, onClear }: { f: Filters; opts: Options; onClear: () => void }) {
   const q = useView<any>('eda', 'overview', queryOf(f, opts))
-  const active = [f.family.length ? `Family: ${f.family.join(', ')}` : '', f.region.length ? `Region: ${f.region.join(', ')}` : '', f.channel.length ? `Channel: ${f.channel.join(', ')}` : '', PER[f.period] ? `Period: ${PER[f.period]}` : ''].filter(Boolean)
   return (
     <ViewShell query={q} errorTitle="Could not load the overview" onClear={onClear}>
       {(d) => {
@@ -33,23 +30,22 @@ export default function Overview({ f, opts, onClear }: { f: Filters; opts: Optio
         }
         return (
           <>
-            {active.length > 0 && <p className="supporting">Filtered to {active.join(' · ')}. The figures below cover only this selection.</p>}
             <StatRow items={[
-              { label: 'Ordered (units, orders received)', value: fmtN(k.orders) },
-              { label: 'Invoiced (units, sales done)', value: fmtN(k.invoiced), sublabel: `${k.fill_rate === null ? '–' : fmtPct(k.fill_rate, 1)} of orders` },
-              { label: 'Ordered but not invoiced (units)', value: fmtN(k.unserved) },
-              ...(k.yoy_win ? [{ label: `Orders, ${win}`, value: <Delta value={k.yoy_orders} text={fmtSigned(k.yoy_orders, 1)} /> }] : []),
-              ...(k.yoy_win ? [{ label: `Sales invoiced, ${win}`, value: <Delta value={k.yoy_sales} text={fmtSigned(k.yoy_sales, 1)} /> }] : []),
-              { label: 'Weeks of data', value: k.weeks, sublabel: `${fmtDate(k.date_from)} to ${fmtDate(k.date_to)}` },
+              { label: 'Orders Received', value: fmtN(k.orders), sublabel: 'Total units ordered' },
+              { label: 'Sales Invoiced', value: fmtN(k.invoiced), sublabel: k.fill_rate !== null ? `${fmtPct(k.fill_rate, 1)} fill rate` : 'Fulfilled orders' },
+              { label: 'Unfulfilled Orders', value: fmtN(k.unserved), sublabel: 'Ordered but not invoiced' },
+              ...(k.yoy_win ? [{ label: `YoY Orders Change`, sublabel: win, value: <Delta value={k.yoy_orders} text={fmtSigned(k.yoy_orders, 1)} /> }] : []),
+              ...(k.yoy_win ? [{ label: `YoY Sales Change`, sublabel: win, value: <Delta value={k.yoy_sales} text={fmtSigned(k.yoy_sales, 1)} /> }] : []),
+              { label: 'Data Coverage', value: k.weeks, sublabel: `${fmtDate(k.date_from)} to ${fmtDate(k.date_to)}` },
             ]} />
             <Findings items={d.findings} title="What the data says" />
-            <ChartCard title="Monthly orders and sales" subtitle="Units, complete months only" label="Monthly orders received and sales invoiced"
+            <ChartCard title="Monthly Trends" subtitle="Orders received vs sales invoiced (complete months only)" label="Monthly volume trends"
               headers={t.headers} rows={t.rows}
-              chart={<TrendChart x={ms} series={monthly} yTitle="Units" yFmt={(n) => fmtN(n)} label="Monthly orders received and sales invoiced" />} />
+              chart={<TrendChart x={ms} series={monthly} yTitle="Units" yFmt={(n) => fmtN(n)} label="Monthly volume trends" />} />
             <div className="grid">
-              {share('family', 'By family', 'Family')}
-              {share('channel', 'By channel', 'Channel')}
-              {share('region', 'By region', 'Region')}
+              {share('family', 'Volume by Family', 'Family')}
+              {share('channel', 'Volume by Channel', 'Channel')}
+              {share('region', 'Volume by Region', 'Region')}
             </div>
           </>
         )

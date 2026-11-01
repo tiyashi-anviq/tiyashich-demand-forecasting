@@ -14,7 +14,7 @@ export default function NewProducts() {
   return (
     <>
       <ModulePageHeader moduleLabel={MODULE} title="New products"
-        description="Map old products to a new one and follow the switch, and plan a launch: an upgrade is judged against Eveready's own range, a new product range against the market. Synthetic data."
+        description="Map old products to a new one and follow the switch, and plan a launch: an upgrade is judged against Eveready's own range, a new product range against the market."
       />
       <NeedsData base="eda" building={{ what: 'prepare your data', how: 'Joining sales with the other tables takes about 15 seconds the first time and is saved afterwards.' }}>
         <ViewShell query={q} errorTitle="Could not load the launch cases">

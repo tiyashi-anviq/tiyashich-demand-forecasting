@@ -26,7 +26,11 @@ def _split(s):
 
 def options() -> dict:
     q, _, _ = _tables()
-    return dict(depots=sorted(q["Depot_Code"].unique()), categories=sorted(q["category"].unique()), partners=sorted(q["brand"].unique()))
+    ws = store.read_workspace() or {}
+    dm = P._find(ws, "location_master", {"depot", "depot_name", "region"})
+    dreg = {} if dm is None else {str(a): str(b) for a, b in zip(dm["depot"], dm["region"])}
+    return dict(depots=sorted(q["Depot_Code"].unique()), categories=sorted(q["category"].unique()), partners=sorted(q["brand"].unique()),
+                depot_region={str(d): dreg.get(str(d)) for d in q["Depot_Code"].unique()})
 
 
 def _replay(sell: np.ndarray, buf: int, first: int) -> dict:

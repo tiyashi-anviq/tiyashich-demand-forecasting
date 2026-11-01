@@ -102,6 +102,15 @@
 .challenge-bar .cds--content-switcher .cds--content-switcher-btn { flex: none; inline-size: auto; }
 .challenge-bar .cds--dropdown__wrapper, .challenge-bar .cds--list-box__wrapper { inline-size: 14rem; }
 
+/* A value the current view fixes (a Regional Head's region, a BU Head's unit) reads as context, not as a disabled picker. */
+.filter-fixed { display: flex; flex-direction: column; gap: var(--cds-spacing-02); }
+.filter-fixed .cds--tag { align-self: flex-start; }
+
+/* A notification that is also a shortcut: click or press Enter to apply its slice to the filters. */
+.notice-click { cursor: pointer; border-radius: var(--cds-radius-md, 0.25rem); }
+.notice-click:focus-visible { outline: 2px solid var(--cds-focus, #0f62fe); outline-offset: 2px; }
+.notice-click:hover .cds--inline-notification { border-inline-start-color: var(--reiq-interactive-01); }
+
 /* Only the tab row stays pinned while scrolling; the title and filters scroll away with the page instead of taking a third of the screen. */
 /* Filters stay in view while scrolling. A header with a filter bar pins it under the page bar (the library's pin-toolbar), and the tab row,
    if there is one, pins right under that. --pinned-header-h is the height of the pinned part of the header, measured in App. */
@@ -153,8 +162,9 @@ th.th-active { background: var(--cds-layer-active, #cfd2cf); }
 .dc-toggle { position: absolute; inset-block-start: 1rem; inset-inline-end: 1rem; z-index: 1; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; border: 1px solid var(--cds-border-strong, #8d8d8d); background: transparent; color: inherit; font: inherit; font-size: 0.875rem; cursor: pointer; }
 .dc-toggle:hover { background: var(--cds-layer-hover, rgba(0,0,0,0.06)); }
 .dc-toggle:focus-visible { outline: 2px solid var(--cds-focus, #0f62fe); outline-offset: 2px; }
-.dc-folded { cursor: pointer; }
-.dc-folded:hover { background: var(--cds-layer-hover, rgba(0,0,0,0.03)); }
+.dc-folded { cursor: pointer; min-block-size: 8rem; display: flex; flex-direction: column; justify-content: center; border: 1px dashed var(--cds-border-subtle, #e0e0e0); }
+.dc-folded:hover { background: var(--cds-layer-hover, rgba(0,0,0,0.03)); border-color: var(--cds-border-strong, #8d8d8d); }
+.dc-folded .cds--data-table-container { margin: 0; }
 
 /* Pinned, the tab row's first tab lines up with the filters above it (the header card is inset by its own padding). */
 @media (min-width: 672px) {
@@ -188,3 +198,57 @@ th.th-active { background: var(--cds-layer-active, #cfd2cf); }
 .findings-head .findings-toggle { margin-inline-start: auto; }
 .findings-head { flex-direction: row; justify-content: space-between; flex-wrap: nowrap; }
 .findings-head .card-title { margin: 0; }
+
+/* insights list: simple bullet points with tags */
+.insights-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--cds-spacing-03); }
+.insights-list li { display: flex; align-items: flex-start; gap: var(--cds-spacing-03); }
+.insights-list li .cds--tag { flex-shrink: 0; }
+.insights-list li .supporting { flex: 1; }
+
+/* ---- datasource manager components ---- */
+
+/* Platform logo wrapper and monogram tile */
+.platform-logo-wrapper { display: inline-flex; align-items: center; }
+.platform-monogram { display: inline-flex; align-items: center; justify-content: center; }
+.platform-logo-sap, .platform-logo-niq { display: inline-flex; align-items: center; justify-content: center; }
+
+/* System picker card */
+.system-card { cursor: pointer; }
+.system-card:hover { background: var(--reiq-layer-hover); border-color: var(--reiq-border-strong); }
+.system-card:focus-visible { outline: 2px solid var(--reiq-focus); outline-offset: 2px; }
+.chip { display: inline-block; font-size: 0.75rem; padding: 1px 6px; border: 1px solid var(--reiq-border-subtle); border-radius: 999px; color: var(--reiq-text-helper); background: var(--reiq-ui-01); margin-right: 4px; margin-bottom: 2px; }
+
+/* File list row */
+.file-row { cursor: default; }
+
+/* Step indicator */
+.step-indicator { display: flex; gap: var(--cds-spacing-02); align-items: center; }
+.step { display: inline-flex; align-items: center; gap: var(--cds-spacing-02); }
+.step-number { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: var(--reiq-radius-round); font-size: 0.75rem; font-weight: var(--reiq-weight-semibold); }
+.step .active .step-number { background: var(--reiq-interactive-01); color: #FFFFFF; }
+.step .done .step-number { background: var(--reiq-success-strong); color: #FFFFFF; }
+.step-label { font-size: 0.75rem; color: var(--reiq-text-helper); }
+.step.active .step-label { color: var(--reiq-text-primary); font-weight: var(--reiq-weight-semibold); }
+
+/* Field label */
+.field-label { font-size: 0.875rem; font-weight: var(--reiq-weight-semibold); color: var(--reiq-text-primary); margin-bottom: var(--cds-spacing-01); }
+
+/* Table checkbox grid */
+.table-grid { display: flex; flex-wrap: wrap; gap: var(--cds-spacing-03); }
+.table-checkbox { display: inline-flex; align-items: center; gap: var(--cds-spacing-02); font-size: 0.875rem; color: var(--reiq-text-secondary); cursor: pointer; }
+.table-checkbox input { width: 1rem; height: 1rem; accent-color: var(--reiq-interactive-01); }
+
+/* Test result badges */
+.test-badge { display: inline-flex; align-items: center; gap: var(--cds-spacing-02); font-size: 0.875rem; font-weight: var(--reiq-weight-semibold); }
+.test-badge.ok { color: var(--reiq-success-strong); }
+.test-badge.fail { color: var(--reiq-error-strong); }
+
+/* Table result rows */
+.table-results { display: flex; flex-direction: column; gap: var(--cds-spacing-01); margin-top: var(--cds-spacing-02); }
+.table-result-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; padding: var(--cds-spacing-01) 0; border-bottom: 1px solid var(--reiq-border-subtle); }
+.table-result-row span:first-child { color: var(--reiq-text-primary); }
+
+/* Text input */
+.text-input { width: 100%; padding: var(--cds-spacing-02) var(--cds-spacing-03); border: 1px solid var(--reiq-border-subtle); border-radius: var(--reiq-radius-card); background: var(--reiq-ui-background); color: var(--reiq-text-primary); font: inherit; font-size: 0.875rem; }
+.text-input:focus { outline: 2px solid var(--reiq-focus); outline-offset: 2px; border-color: transparent; }
+

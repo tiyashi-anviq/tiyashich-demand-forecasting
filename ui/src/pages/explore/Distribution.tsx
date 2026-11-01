@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Tile } from '@reiq/ui/carbon'
 import { fmtDate, fmtN, fmtPct, monthLong } from '../../lib/format'
 import { queryOf, type Filters, type Options } from '../../lib/filters'
 import { useView } from '../../lib/useView'
@@ -38,33 +39,81 @@ export default function Distribution({ f, opts, onClear }: { f: Filters; opts: O
           { header: 'Class', cell: (r) => r.k }, { header: 'SKUs', num: true, cell: (r) => r.count },
           { header: 'Share of units (%)', num: true, cell: (r) => fmtPct(r.share, 1) },
         ]
+        const totalValues = d.histogram.reduce((sum: number, h: any) => sum + h.n, 0)
+        const lowVol = d.histogram.filter((h: any) => h.hi <= 100).reduce((sum: number, h: any) => sum + h.n, 0)
+        const medVol = d.histogram.filter((h: any) => h.hi > 100 && h.hi <= 5000).reduce((sum: number, h: any) => sum + h.n, 0)
+        const highVol = d.histogram.filter((h: any) => h.hi > 5000).reduce((sum: number, h: any) => sum + h.n, 0)
+        
         return (
           <>
             <Findings items={d.findings} title="What the data says" />
+            
+            {/* Distribution Summary Card */}
+            <Tile className="card">
+              <h3 className="card-title">Weekly Sales Distribution</h3>
+              <div className="kpi-grid">
+                <div>
+                  <span className="kpi-label">Median Week</span>
+                  <span className="kpi-value">{fmtN(d.median, 0)}</span>
+                  <span className="kpi-sub">units per week</span>
+                </div>
+                <div>
+                  <span className="kpi-label">Low Volume</span>
+                  <span className="kpi-value">{fmtPct(lowVol / totalValues, 0)}</span>
+                  <span className="kpi-sub">under 100 units</span>
+                </div>
+                <div>
+                  <span className="kpi-label">Typical Range</span>
+                  <span className="kpi-value">{fmtPct(medVol / totalValues, 0)}</span>
+                  <span className="kpi-sub">100-5k units</span>
+                </div>
+                <div>
+                  <span className="kpi-label">High Volume</span>
+                  <span className="kpi-value">{fmtPct(highVol / totalValues, 0)}</span>
+                  <span className="kpi-sub">over 5k units</span>
+                </div>
+              </div>
+              <p className="supporting" style={{ marginTop: 'var(--cds-spacing-04)' }}>
+                The histogram below uses color to show volume ranges: 
+                low (under 100), typical (100-5k), high (5k-10k), and extreme (over 10k).
+              </p>
+            </Tile>
+
             <div className="grid">
-              <ChartCard title="How big is a typical week?" subtitle={`Weekly values per series, on a log scale. The median is ${fmtN(d.median, 0)} units.`} label="Weekly values per series, grouped by size"
+              <ChartCard title="Weekly Sales Volume" subtitle="Distribution across all series (log scale for readability)" label="Weekly distribution"
                 headers={['From (units)', 'To (units)', 'Weekly values']} rows={d.histogram.map((h: any) => [fmtN(h.lo, 0), fmtN(h.hi, 0), h.n])}
-                chart={<BarsChart items={d.histogram.map((h: any) => ({ label: `${fmtN(h.lo, 0)} to ${fmtN(h.hi, 0)}`, value: Math.max(1, h.n) }))} yTitle="Weekly values (count, log scale)" xTitle="Units in a week" log fmt={(n) => fmtN(n, 0)} label="Weekly values per series, grouped by size" />} />
-              <ChartCard title="A few SKUs carry the volume" subtitle={`Cumulative share of units by SKU rank, ${d.pareto.skus} SKUs`} label="Cumulative share of units by SKU rank"
+                chart={<BarsChart items={d.histogram.map((h: any) => {
+                  // Simplify labels and color-code by volume range
+                  const label = h.lo < 1000 ? fmtN(h.lo, 0) : `${fmtN(h.lo / 1000, 0)}k`
+                  // Color coding: low (gray), typical (blue), high (teal), extreme (purple)
+                  let tone: 1 | 2 | 3 | 8 = 1
+                  if (h.hi <= 100) tone = 8  // Low volume - gray
+                  else if (h.hi <= 5000) tone = 1  // Typical - blue
+                  else if (h.hi <= 10000) tone = 3  // High - teal
+                  else tone = 2  // Extreme - orange
+                  return { label, value: Math.max(1, h.n), tone }
+                })} yTitle="Weekly values (count)" xTitle="Units per week" log fmt={(n) => fmtN(n, 0)} label="Weekly distribution" />}
+                note={`Color-coded: Gray (under 100), Blue (100-5k), Teal (5k-10k), Orange (over 10k). Median: ${fmtN(d.median, 0)} units. Most weeks (${fmtPct(medVol / totalValues, 0)}) are typical.`} />
+              <ChartCard title="SKU Concentration (80/20 Rule)" subtitle={`Pareto analysis of ${d.pareto.skus} SKUs`} label="Pareto curve"
                 headers={['SKU rank', 'Cumulative share (%)']} rows={d.pareto.curve.map((c: any) => [c.rank, fmtPct(c.share, 1)])}
-                chart={<TrendChart kind="labels" x={curve.map((c) => String(c.rank))} series={[{ name: 'Cumulative share', values: curve.map((c) => c.share), tone: 1 }]} yTitle="Cumulative share of units (%)" yFmt={(n) => `${Math.round(n * 100)}%`} label="Cumulative share of units by SKU rank" pointsAlways />}
-                note={abc.map((r) => `${r.k}: ${r.count} SKUs, ${fmtPct(r.share, 0)} of units`).join('. ') + '.'} />
-              <ChartCard title="Channel mix over time" subtitle="Share of units by quarter" label="Channel share of units by quarter"
+                chart={<TrendChart kind="labels" x={curve.map((c) => String(c.rank))} series={[{ name: 'Cumulative share', values: curve.map((c) => c.share), tone: 1 }]} yTitle="Share (%)" yFmt={(n) => `${Math.round(n * 100)}%`} label="Pareto curve" pointsAlways />}
+                note={`ABC Classification: ${abc.map((r) => `${r.k} (${r.count} SKUs = ${fmtPct(r.share, 0)} volume)`).join(', ')}`} />
+              <ChartCard title="Channel Evolution" subtitle="Quarterly unit share by channel" label="Channel mix"
                 headers={['Quarter', ...d.channel_mix.channels]} rows={d.channel_mix.quarters.map((q: string, i: number) => [q, ...d.channel_mix.share[i].map((v: number) => fmtPct(v, 1))])}
                 chart={<StackedChart share labels={d.channel_mix.quarters.map((q: string) => q.replace(/^20/, ''))} xTitle="Quarter"
-                  series={d.channel_mix.channels.map((c: string, k: number) => ({ name: c, values: d.channel_mix.share.map((r: number[]) => r[k]) }))} yTitle="Share of units (%)" label="Channel share of units by quarter" />} />
-              <ChartCard title="Orders turned into invoices" subtitle="Fill rate by family: invoiced as a share of ordered" label="Fill rate by family"
+                  series={d.channel_mix.channels.map((c: string, k: number) => ({ name: c, values: d.channel_mix.share.map((r: number[]) => r[k]) }))} yTitle="Share (%)" label="Channel mix" />} />
+              <ChartCard title="Fill Rate by Family" subtitle="Orders fulfilled (invoiced/ordered)" label="Fill rate"
                 headers={['Family', 'Fill rate (%)']} rows={fr.by_family.map((x: any) => [x.family, fmtPct(x.v, 1)])}
-                chart={<BarsChart horizontal items={fr.by_family.map((x: any) => ({ label: x.family, value: x.v, tone: x.v < 0.97 ? 2 : 1 }))} yTitle="Fill rate (%)" fmt={(n) => fmtPct(n, 0)} domain={[0, 1]} label="Fill rate by family" />} />
-              <ChartCard title="Fill rate by month" subtitle="Share of ordered units that were invoiced, against the 90% floor" label="Fill rate by month"
+                chart={<BarsChart horizontal items={fr.by_family.map((x: any) => ({ label: x.family, value: x.v, tone: x.v < 0.97 ? 2 : 1 }))} yTitle="Rate (%)" fmt={(n) => fmtPct(n, 0)} domain={[0, 1]} label="Fill rate" />} />
+              <ChartCard title="Monthly Fill Rate" subtitle="vs 90% target" label="Fill trend"
                 headers={['Month', 'Fill rate (%)']} rows={fr.months.map((m: string, i: number) => [monthLong(m), fmtPct(fr.values[i], 1)])}
-                chart={<TrendChart x={fr.months} series={[{ name: 'Fill rate', values: fr.values, tone: 1 }, { name: 'Floor (90%)', values: fr.months.map(() => 0.9), tone: 2 }]} yTitle="Fill rate (%)" yFmt={(n) => fmtPct(n, 0)} zero={false} label="Fill rate by month" />} />
-              <ChartCard title="Spikes by family" subtitle="Share of weekly values flagged as one-off bulk or project orders" label="Flagged spikes by family"
+                chart={<TrendChart x={fr.months} series={[{ name: 'Fill rate', values: fr.values, tone: 1 }, { name: 'Target', values: fr.months.map(() => 0.9), tone: 2 }]} yTitle="Rate (%)" yFmt={(n) => fmtPct(n, 0)} zero={false} label="Fill trend" />} />
+              <ChartCard title="Outlier Detection" subtitle="Flagged bulk/project orders" label="Outliers"
                 headers={['Family', 'Weeks flagged', 'Share (%)']} rows={d.outliers_by_family.map((o: any) => [o.family, o.count, fmtPct(o.share, 2)])}
-                chart={<BarsChart horizontal items={d.outliers_by_family.map((o: any) => ({ label: o.family, value: o.share }))} yTitle="Share of weekly values (%)" fmt={(n) => fmtPct(n, 1)} label="Flagged spikes by family" />} />
-              <DataCard id="classes" title="ABC classes" description="SKUs grouped by their share of units" cols={abcCols} rows={abc} itemsLabel="Classes per page" rowKey={(r) => r.k} />
+                chart={<BarsChart horizontal items={d.outliers_by_family.map((o: any) => ({ label: o.family, value: o.share }))} yTitle="Share (%)" fmt={(n) => fmtPct(n, 1)} label="Outliers" />} />
+              <DataCard id="classes" title="ABC Classification" description="SKU segmentation by volume" cols={abcCols} rows={abc} itemsLabel="Classes per page" rowKey={(r) => r.k} />
             </div>
-            <DataCard id="spikes" title="The biggest spikes" description="Weeks far above that series' usual level. Marked in the data, not removed."
+            <DataCard id="spikes" title="Major Outliers" description="Weeks with unusual spikes (flagged, not removed)"
               cols={spikeCols} rows={d.top_outliers} itemsLabel="Spikes per page" rowKey={(o, i) => `${o.date}-${o.sku}-${i}`} defaultSort={{ col: 6, dir: 'desc' }} />
           </>
         )

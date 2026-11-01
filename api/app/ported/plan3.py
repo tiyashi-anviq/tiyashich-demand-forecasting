@@ -44,18 +44,8 @@ def plan() -> dict:
     sku_u = pd.DataFrame(r["sku_fut"][:, :M + 1], index=r["skus"]["sku"].to_numpy()).groupby(level=0).sum()
     skus = list(sku_u.index)
     fam = t["sm"]["family"].reindex(skus)
-    # families whose numbers were agreed in the forecast challenge plan on those final numbers, SKU by SKU, for the month they cover
+    # Demand comes straight from the model forecast (M1). Challenge final values are not integrated here.
     agreed_f: set[str] = set()
-    final_reg: dict[str, dict[str, float]] = {}
-    try:
-        from ..challenge import core as CH
-        fin = CH.final_demand(fm[0])
-        agreed_f, final_reg = set(fin["families"]), fin["region"]
-        for sku_, q_ in fin["sku"].items():
-            if sku_ in sku_u.index:
-                sku_u.loc[sku_, 0] = q_
-    except Exception:
-        agreed_f, final_reg = set(), {}
     nm = t["norms"]
     tgt = fam.map(lambda f: float((nm.loc[f, "Target_Stock_Cover_Days_Min"] + nm.loc[f, "Target_Stock_Cover_Days_Max"]) / 2) if f in nm.index else 42.5)
     short_l = fam.map(lambda f: float(nm.loc[f, "Short_Flag_Below_Cover_Days"]) if f in nm.index else 35.0)
@@ -77,19 +67,43 @@ def plan() -> dict:
     # each line type's rated capacity is held as it stands in the capacity file, then split over the plants
     cap_fc = {ln: float(rated.get(ln, 0.0)) for ln in ldem}
     pcfg = PL.config()
-    pan = eda.panel()
-    pan = pan[pan["date"] > pan["date"].max() - pd.Timedelta(weeks=13)]
     reg_share = {}
+    # Build SKU -> region shares from the forecast engine (month 0 / October 2026)
+    skus_df = r["skus"]
+    sku_to_region = skus_df.drop_duplicates(subset="sku").set_index("sku")["region"].to_dict()
+    sku_month0 = sku_u[0]  # Series indexed by SKU with month-0 forecast
+
+    sku_region_fc: dict[str, dict[str, float]] = {}
+    for sku in skus:
+        reg = sku_to_region.get(sku)
+        fc_val = float(sku_month0.get(sku, 0.0))
+        if sku not in sku_region_fc:
+            sku_region_fc[sku] = {}
+        if reg:
+            sku_region_fc[sku][reg] = sku_region_fc[sku].get(reg, 0.0) + fc_val
+
+    sku_reg: dict[str, dict[str, float]] = {}
+    for sku, regions in sku_region_fc.items():
+        total = sum(regions.values())
+        if total > 0:
+            sku_reg[sku] = {rg: v / total for rg, v in regions.items()}
+        else:
+            sku_reg[sku] = {}
+
+    # Compute regional shares per line type from forecast-weighted SKU shares
     for ln, g in line_of.groupby(line_of):
-        x = pan[pan["sku"].isin(list(g.index))].groupby("region")["orders_qty"].sum()
-        reg_share[ln] = (x / x.sum()).to_dict() if x.sum() > 0 else {}
-        # where the line's output goes follows the final numbers' region mix for the SKUs that have one
-        fin_x: dict[str, float] = {}
-        for k_ in g.index:
-            for rg_, q_ in final_reg.get(k_, {}).items():
-                fin_x[rg_] = fin_x.get(rg_, 0.0) + q_
-        if sum(fin_x.values()) > 0:
-            reg_share[ln] = {rg_: v_ / sum(fin_x.values()) for rg_, v_ in fin_x.items()}
+        ks = list(g.index)
+        weighted: dict[str, float] = {}
+        total_fc = 0.0
+        for sku in ks:
+            fc = float(sku_month0.get(sku, 0.0))
+            total_fc += fc
+            for rg, share in sku_reg.get(sku, {}).items():
+                weighted[rg] = weighted.get(rg, 0.0) + share * fc
+        if total_fc > 0:
+            reg_share[ln] = {rg: v / total_fc for rg, v in weighted.items()}
+        else:
+            reg_share[ln] = {}
     plant_cap = {ln: {pl: cap_fc[ln] * sh for pl, sh in pcfg["shares"].get(ln, {pl: 1.0 / len(PL.PLANTS) for pl in PL.PLANTS}).items()} for ln in cap_fc}
     plant_rows = {(pl, ln): dict(plant=pl, state=PL.STATE.get(pl, ""), line=ln, capacity=plant_cap[ln][pl], own=[0.0] * M, made=[0.0] * M, sent=[0.0] * M, take=[0.0] * M, util=[0.0] * M) for ln in plant_cap for pl in plant_cap[ln]}
     bl = pd.Series(0.0, index=skus)  # the part of last month's need that no plant could make; it is added to this month's need
@@ -97,10 +111,7 @@ def plan() -> dict:
     out = dict(demand=np.zeros(M), prod_req=np.zeros(M), prod_ok=np.zeros(M), buy_fg=np.zeros(M), close=np.zeros(M), unmet=np.zeros(M))
     s = stock.copy()
     prod_sku = {}
-    # each product's share of orders by region (last 13 weeks), so the plan can be read for one region
-    _x = pan[pan["sku"].isin(skus)].groupby(["sku", "region"])["orders_qty"].sum().unstack(fill_value=0.0)
-    _x = _x.div(_x.sum(axis=1).replace(0, np.nan), axis=0).fillna(0.0)
-    sku_reg = {k: {rg: float(v) for rg, v in row.items()} for k, row in _x.iterrows()}
+
     fam_flow, prod_rows = {}, {k: dict(sku=k, name=str(t['sm'].loc[k].get('description', k)), family=str(fam.get(k)), line=str(line_of.get(k, 'Bought in')), sub=str(t['sm'].loc[k].get('Sub_Category', '') or ''), reg=sku_reg.get(k, {}), lo=float(short_l[k]), hi=float(over_l[k]), prod=[0.0] * M, demand=[0.0] * M, close=[0.0] * M, need=[0.0] * M, nxt=[0.0] * M) for k in skus}
     fam_rows, line_rows = [], {ln: dict(line=ln, rated=float(rated.get(ln, 0.0)), cap=cap_fc.get(ln, 0.0), ref=float(ref_req.get(ln, 0.0)), required=[0.0] * M, possible=[0.0] * M, util=[0.0] * M, short=[0.0] * M, backlog=[0.0] * M, fresh=[0.0] * M, carry_in=[0.0] * M) for ln in set(line_of.values)}
     for j in range(M):
