@@ -1,4 +1,4 @@
-# Eveready Demand Planning App (demo, synthetic data)
+# Demand Forecasting (demo, synthetic data)
 
 Folders: `er-data` (synthetic workbooks), `api` (FastAPI), `ui` (React + Vite + Carbon).
 
