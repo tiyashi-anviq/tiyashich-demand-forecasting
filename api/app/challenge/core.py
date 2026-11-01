@@ -234,12 +234,14 @@ def cycle() -> dict:
                         continue
                     reg_bus.append(dict(bu=u["bu"], model=round(c[0]), last_year=round(c[1] or 0), last_month=round(c[2] or 0)))
                 ri = _ritem(d, m, fam, reg)
-                # Show submitted total if exists, otherwise 0 (not model forecast)
-                q = round(sum(ri.get("submitted", {}).values())) if ri.get("submitted") else 0
-                submitted_skus = len({k.split("|", 1)[1] for k in ri.get("submitted", {})})
-                submitted_channels = len({k.split("|", 1)[0] for k in ri.get("submitted", {})})
-                regs.append(dict(region=reg, model=round(model), last_year=round(ly), last_month=round(lm), qty=q, simulated=ri["simulated"], note="", status=ri["status"], turn=ri["turn"],
-                                 rounds=ri["rounds"], agreed_by=ri["agreed_by"], skus=submitted_skus,
+                submitted = ri.get("submitted", {})
+                submitted_total = round(sum(submitted.values()))
+                q = round(sum(_submitted_line_values(ri).values()))
+                submitted_skus = len({k.split("|", 1)[1] for k in submitted})
+                submitted_channels = len({k.split("|", 1)[0] for k in submitted})
+                regs.append(dict(region=reg, model=round(model), last_year=round(ly), last_month=round(lm), qty=q, submitted_qty=submitted_total,
+                                 submitted_lines=len(submitted), simulated=ri["simulated"], note="", status=ri["status"], turn=ri["turn"],
+                                 rounds=_round_history(ri), agreed_by=ri["agreed_by"], skus=submitted_skus,
                                 channels=submitted_channels, bus=reg_bus))
                 model_t += model
                 ly_t += ly
@@ -368,6 +370,19 @@ def _all_regions_agreed(d: dict, m: str, fam: str) -> bool:
     return bool(regs) and all(_ritem(d, m, fam, rg)["status"] == "agreed" for rg in regs)
 
 
+def _round_history(it: dict) -> list[dict]:
+    history = []
+    for entry in it["rounds"]:
+        public_entry = {k: v for k, v in entry.items() if k != "lines"}
+        public_entry["qty"] = round(sum(entry["lines"].values())) if "lines" in entry else None
+        history.append(public_entry)
+    return history
+
+
+def _submitted_line_values(it: dict) -> dict[str, float]:
+    return {k: it["lines"].get(k, v) for k, v in it.get("submitted", {}).items()}
+
+
 def _consolidate(d: dict, m: str, fam: str) -> None:
     """Send the numbers on the table for a family to the business units. Each unit gets the channels under it, in every
     region, channel by channel and SKU by SKU. Only submitted products are sent."""
@@ -377,11 +392,14 @@ def _consolidate(d: dict, m: str, fam: str) -> None:
     for rg in mod["regions"]:
         if any((fam, rg, u["bu"], m) in mod["cell"] for u in mod["units"]):
             ri = _ritem(d, m, fam, rg)
-            # Use submitted values only, not all lines with simulated values
+            # Use current values for submitted lines only, not untouched seed values.
             submitted = ri.get("submitted", {})
-            q += round(sum(submitted.values()))
+            submitted_lines = _submitted_line_values(ri)
+            q += round(sum(submitted_lines.values()))
             for k, v in submitted.items():
-                unit_lines.setdefault(_bu_for(k.split("|", 1)[0]), {})[f"{rg}|{k}"] = v
+                unit_lines.setdefault(_bu_for(k.split("|", 1)[0]), {})[f"{rg}|{k}"] = submitted_lines[k]
+    if not unit_lines:
+        raise ValueError("No regional product lines have been submitted for this family.")
     _save(d)
     d = _load()
     row = _row(m, fam)
@@ -450,13 +468,18 @@ def region_respond(m: str, fam: str, reg: str, role: str, action: str, lines: di
             raise ValueError("Only the S&D Head can make the final call.")
     elif it["turn"] != mine and not (role == "regional" and action == "revise" and it["turn"] == "sd"):
         raise ValueError("It is the other side's turn.")
-    total = round(sum(it["lines"].values()))
+    submitted = it.get("submitted", {})
+    total = round(sum(_submitted_line_values(it).values()))
     if action == "accept":
+        if not submitted:
+            raise ValueError("Submit at least one product line before accepting this regional forecast.")
         it.update(status="agreed", agreed_by=f"{who} accepted", turn=None)
-        it["rounds"].append(dict(by=who, action="accept", qty=total, reason=reason or "Accepted", at=time.time()))
+        it["rounds"].append(dict(by=who, action="accept", qty=total, lines=_submitted_line_values(it),
+                                 reason=reason or "Accepted", at=time.time()))
     elif action in ("counter", "final", "revise", "propose"):
         if not reason.strip() and action != "propose":
             raise ValueError("A change needs a reason.")
+        old = dict(it["lines"])
         # For Regional: merge new submissions with existing submitted products (additive)
         # For S&D: merge with lines (full product list)
         if role == "regional":
@@ -469,19 +492,27 @@ def region_respond(m: str, fam: str, reg: str, role: str, action: str, lines: di
                 if k in it["lines"]:
                     it["lines"][k] = v
             new = it["lines"]
-            old = it["lines"]
         else:
-            new = _check_lines(it["lines"], lines, merge=True)
-            old = dict(it["lines"])
+            submitted_keys = set(submitted)
+            if not submitted_keys:
+                raise ValueError("There are no submitted product lines to counter.")
+            if set(lines or {}) - submitted_keys:
+                raise ValueError("The S&D Head can only change submitted product lines.")
+            editable = {k: it["lines"][k] for k in submitted_keys if k in it["lines"]}
+            updates = _check_lines(editable, lines, merge=True)
+            new = dict(it["lines"])
+            new.update(updates)
             it["lines"] = new
-        t2 = round(sum(new.values()))
+        current_submitted = _submitted_line_values(it)
+        t2 = round(sum(current_submitted.values()))
         if action == "final":
             it.update(status="agreed", agreed_by="S&D Head, final call", turn=None, simulated=False)
         elif action == "revise":
             it.update(simulated=False)  # the Regional Head is revising their own number; still the S&D Head's turn
         else:
             it.update(turn="regional" if role == "sd" else "sd", simulated=False)
-        it["rounds"].append(dict(by=who, action=action, qty=t2, reason=reason.strip(), at=time.time(), changed=sum(1 for k in new if new[k] != old.get(k))))
+        it["rounds"].append(dict(by=who, action=action, qty=t2, lines=current_submitted, reason=reason.strip(), at=time.time(),
+                                 changed=sum(1 for k in it.get("submitted", {}) if new.get(k) != old.get(k))))
     else:
         raise ValueError("Unknown action.")
     _rsave(d, m, fam, reg, it)
@@ -498,7 +529,10 @@ def region_reopen(m: str, fam: str, reg: str) -> None:
         raise ValueError("This family has already gone to the business units.")
     it = _ritem(d, m, fam, reg)
     it.update(status="negotiating", turn="regional", agreed_by=None)
-    it["rounds"].append(dict(by="S&D Head", action="reopen", qty=round(sum(it["lines"].values())), reason="Reopened", at=time.time()))
+    it["rounds"].append(dict(by="S&D Head", action="reopen",
+                             qty=round(sum(_submitted_line_values(it).values())),
+                             lines=_submitted_line_values(it),
+                             reason="Reopened", at=time.time()))
     _rsave(d, m, fam, reg, it)
     _save(d)
 
@@ -507,7 +541,7 @@ def region_lines(m: str, fam: str, reg: str) -> dict:
     """SKU by SKU for one region: the model, last year and the number now on the table, with each SKU's change from the previous round."""
     d = _load()
     it = _ritem(d, m, fam, reg)
-    submitted = it.get("submitted") or it["lines"]
+    submitted = it.get("submitted", {})
     desc = _desc()
     rows = []
     for x in region_skus(m, fam, reg):
@@ -515,14 +549,15 @@ def region_lines(m: str, fam: str, reg: str) -> dict:
         cur = it["lines"].get(key, 0)
         rows.append(dict(channel=x["channel"], bu=_bu_for(x["channel"]), sku=x["sku"], description=desc.get(x["sku"], ""), model=round(x["model"]),
                          last_year=round(x["last_year"]), last_month=round(x["last_month"]), qty=cur,
-                         submitted=submitted.get(key, cur)))
+                         is_submitted=key in submitted, submitted=submitted.get(key)))
     # Extract BU and SKUs from submitted keys for filter auto-population
     submitted_keys = list(it.get("submitted", {}).keys())
     submitted_bus = list(set([k.split('|')[0] for k in submitted_keys])) if submitted_keys else []
     submitted_skus = list(set([k.split('|')[1] for k in submitted_keys])) if submitted_keys else []
     
-    return dict(month=m, family=fam, region=reg, status=it["status"], turn=it["turn"], simulated=it["simulated"], rows=rows, 
-                total=round(sum(it.get("submitted", {}).values())),
+    return dict(month=m, family=fam, region=reg, status=it["status"], turn=it["turn"], simulated=it["simulated"], rows=rows,
+                total=round(sum(it["lines"].get(k, v) for k, v in submitted.items())),
+                submitted_total=round(sum(submitted.values())), submitted_lines=len(submitted),
                 submitted_reason=it.get("submitted_reason") or "",
                 submitted_bus=submitted_bus,
                 submitted_skus=submitted_skus)
@@ -552,8 +587,10 @@ def submissions(m: str, region: str | None = None, bu: str | None = None, family
         if status and it["status"] != status:
             continue
         key = f"{ch}|{sku}"
-        submitted = it.get("submitted") or it["lines"]
-        sub = submitted.get(key, it["lines"].get(key, 0))
+        submitted = it.get("submitted", {})
+        if key not in submitted:
+            continue
+        sub = submitted[key]
         cur = it["lines"].get(key, 0)
         rows.append(dict(family=fam, region=reg, bu=b, bu_name=unit_names.get(b, b), channel=ch, channel_name=names.get(ch, ch),
                          sku=sku, description=desc.get(sku, ""), model=round(model), last_year=round(ly), last_month=round(lm),

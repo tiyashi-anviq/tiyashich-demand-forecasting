@@ -44,7 +44,7 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
 
   useEffect(() => {
     if (!counterFamilyToReview || family !== counterFamilyToReview || q.data?.family !== counterFamilyToReview) return
-    const changedRows = (q.data.rows ?? []).filter((row: any) => Number(row.qty) !== Number(row.submitted))
+    const changedRows = (q.data.rows ?? []).filter((row: any) => row.is_submitted && Number(row.qty) !== Number(row.submitted))
     const channels = [...new Set<string>(changedRows.map((row: any) => row.bu).filter((value: unknown): value is string => typeof value === 'string'))]
     const products = [...new Set<string>(changedRows.map((row: any) => row.sku).filter((value: unknown): value is string => typeof value === 'string'))]
     setBu(channels.length === 1 ? channels[0] : null)
@@ -55,11 +55,11 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   const post = useMutation({
     mutationFn: (body: any) => sendJson<any>('/api/challenge/region/respond', 'POST', { month, family, region, ...body }),
     onSuccess: (c, vars) => {
-      const total = vars.action === 'accept'
-        ? (q.data?.rows ?? []).reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0)
+        const total = vars.action === 'accept'
+          ? (q.data?.rows ?? []).filter((row: any) => row.is_submitted).reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0)
         : Object.values(vars.lines || {}).reduce((sum: number, qty: any) => sum + Number(qty || 0), 0)
       const done = vars.action === 'accept' ? 'accepted' : 'submitted'
-      showToast('success', `✓ Forecast ${done}!`, `${region} - ${family}: ${fmtN(total)} units`)
+      showToast('success', `✓ Forecast ${done}!`, `${region} - ${family}: ${fmtInt(total)} units`)
       onDone(c)
       setDraft({})
       setReason('')
@@ -111,7 +111,8 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   const rowsToSubmit = allRows.filter((r: any) => (!bu || r.bu === bu) && (!product || r.sku === product))
   const changed = rowsToSubmit.filter((r: any) => val(r) !== r.qty).length
   const incomplete = rowsToSubmit.filter((r: any) => !Number.isFinite(val(r)) || val(r) < 0).length
-  const regionFamilyTotal = allRows.reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0)
+  const submittedRows = allRows.filter((row) => row.is_submitted)
+  const regionFamilyTotal = submittedRows.reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0)
 
   // The glance card sums the cycle data for whatever the three filters select: region always, then channel
   // and family when they are chosen. It reads from the cycle so it is filled in before a family is opened.
@@ -129,7 +130,13 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
     const rounds = submission.rounds ?? []
     const lastRound = rounds[rounds.length - 1]
     if (lastRound?.by !== 'S&D Head' || lastRound.action !== 'counter') return []
-    return [{ family: it.family, qty: lastRound.qty, reason: lastRound.reason }]
+    return [{
+      family: it.family,
+      qty: submission.qty,
+      changed: lastRound.changed ?? 0,
+      delta: typeof submission.submitted_qty === 'number' ? submission.qty - submission.submitted_qty : null,
+      reason: lastRound.reason,
+    }]
   })
   const selectedCounter = countered.find((item) => item.family === family)
   const selectedCounterTotal = selectedCounter && d
@@ -207,8 +214,8 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
   ]
 
   // The API speaks accept / counter / final / revise / propose. Regional uses 'propose' for initial submissions.
-  // If this is initial submission (total is 0), always use 'propose' even if accepting simulated values
-  const isInitialSubmission = d?.total === 0
+  // An empty submitted-line set means this is the initial forecast, regardless of seeded values.
+  const isInitialSubmission = (d?.submitted_lines ?? 0) === 0
   const action: 'accept' | 'counter' | 'revise' | 'propose' = 
     isInitialSubmission ? 'propose' : 
     turn === 'regional' ? (changed > 0 ? 'counter' : 'accept') : 'propose'
@@ -248,7 +255,8 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
               <div>
                 <strong>{item.family}</strong>
                 <p className="footnote">
-                  Countered with {fmtInt(item.family === family && selectedCounterTotal !== undefined ? selectedCounterTotal : item.qty)} units across {region}
+                  Countered at {fmtInt(item.qty)} units across {region} (all channels)
+                  {item.delta !== null ? `; ${item.changed} product line${item.changed === 1 ? '' : 's'} changed the total ${item.delta < 0 ? 'down' : 'up'} by ${fmtInt(Math.abs(item.delta))} units` : ''}
                   {item.reason ? `: ${item.reason}` : '.'}
                 </p>
               </div>
@@ -346,7 +354,7 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
             subtitle={isAgreed
               ? d.agreed_by || 'Every line is agreed.'
               : turn === 'regional'
-                ? `The S&D Head put ${fmtInt(selectedCounterTotal ?? d.total)} units on the table for this region and family. Filters only narrow the lines shown; accepting finalizes the full regional total. ${selectedCounter?.reason ? `Their reason: ${selectedCounter.reason}` : ''}`
+                ? `The submitted ${region}, ${family} total is ${fmtInt(selectedCounterTotal ?? d.total)} units across ${d.submitted_lines} product lines. The S&D counter changed ${selectedCounter?.changed ?? 0} product line${selectedCounter?.changed === 1 ? '' : 's'}${selectedCounter?.delta !== null && selectedCounter?.delta !== undefined ? `, moving the total ${selectedCounter.delta < 0 ? 'down' : 'up'} by ${fmtInt(Math.abs(selectedCounter.delta))} units` : ''}. Current filters show ${fmtInt(rows.reduce((sum: number, row: any) => sum + Number(row.qty || 0), 0))} units across ${rows.length} line${rows.length === 1 ? '' : 's'}${buName ? ` in ${buName}` : ''}. Accepting finalizes the submitted regional total. ${selectedCounter?.reason ? `Their reason: ${selectedCounter.reason}` : ''}`
                 : `You can still revise your own number before the S&D Head responds. ${d.submitted_reason ? `Your note: ${d.submitted_reason}` : ''}`}
           />
 

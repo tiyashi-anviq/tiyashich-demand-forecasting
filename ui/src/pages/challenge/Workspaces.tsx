@@ -302,18 +302,19 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
       />
 
       {/* Show submitted products details when family and region are selected */}
-      {fFam && fReg && <SubmittedProductsTable month={month} family={fFam} region={fReg} buFilter={fBu} productFilter={fProd} />}
+      {fFam && fReg && <SubmittedProductsTable month={month} family={fFam} region={fReg} buFilter={fBu} productFilter={fProd} onDone={onDone} />}
     </div>
   )
 }
 
 /** Show the breakdown of submitted products for S&D review with editing capability */
-function SubmittedProductsTable({ month, family, region, buFilter, productFilter }: {
+function SubmittedProductsTable({ month, family, region, buFilter, productFilter, onDone }: {
   month: string
   family: string
   region: string
   buFilter: string | null
   productFilter: string | null
+  onDone: (c: any) => void
 }) {
   const { showToast } = useToast()
   const [draft, setDraft] = useState<Record<string, number>>({})
@@ -327,9 +328,10 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
 
   const respond = useMutation({
     mutationFn: (body: any) => sendJson<any>('/api/challenge/region/respond', 'POST', { month, family, region, ...body }),
-    onSuccess: (_c, vars) => {
-      const action = vars.action === 'counter' ? 'countered' : 'accepted'
-      showToast('success', `✓ ${region} - ${family} ${action}!`, reason || 'Forwarding to channel heads')
+    onSuccess: (c, vars) => {
+      showToast('success', vars.action === 'counter' ? `✓ Counter sent to ${region} Regional Head` : `✓ ${region} - ${family} accepted!`,
+        vars.action === 'counter' ? `${family}: ${reason || 'The counter-offer is ready for regional review.'}` : reason || 'Forwarding to channel heads')
+      onDone(c)
       q.refetch()
       setDraft({})
       setReason('')
@@ -343,7 +345,7 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
   if (q.isError || !q.data) return null
 
   const allRows = q.data.rows || []
-  const submittedRows = allRows.filter((r: any) => r.submitted > 0)
+  const submittedRows = allRows.filter((r: any) => r.is_submitted)
   
   // Apply filters
   const filteredRows = submittedRows.filter((r: any) => {
@@ -356,7 +358,7 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
 
   const val = (r: any) => {
     const key = `${r.channel}|${r.sku}`
-    return draft[key] !== undefined ? draft[key] : r.submitted
+    return draft[key] !== undefined ? draft[key] : r.current
   }
   
   const setValue = (r: any, value: number) => {
@@ -364,7 +366,7 @@ function SubmittedProductsTable({ month, family, region, buFilter, productFilter
     setDraft({ ...draft, [key]: value })
   }
 
-  const changed = submittedRows.filter((r: any) => val(r) !== r.submitted).length
+  const changed = submittedRows.filter((r: any) => val(r) !== r.current).length
   const total = filteredRows.reduce((sum: number, r: any) => sum + val(r), 0)
 
   const cols: Col<any>[] = [

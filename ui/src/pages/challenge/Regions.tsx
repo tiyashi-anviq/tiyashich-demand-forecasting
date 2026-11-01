@@ -48,14 +48,12 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
   
   // Filter rows by product if productFilter is set, or show only submitted products for S&D Head
   const allRows = d.rows
-  const submittedRows = allRows.filter((r: any) => r.submitted > 0)
+  const submittedRows = allRows.filter((r: any) => r.is_submitted)
   
-  // For S&D Head: default to showing only submitted products unless productFilter is explicitly set
-  // For Regional Head: show all products
-  const filteredRows = productFilter 
-    ? allRows.filter((r: any) => r.sku === productFilter) 
-    : (role === 'sd' && submittedRows.length > 0) 
-      ? submittedRows 
+  const filteredRows = role === 'sd'
+    ? submittedRows.filter((r: any) => !productFilter || r.sku === productFilter)
+    : productFilter
+      ? allRows.filter((r: any) => r.sku === productFilter)
       : allRows
   const rows = filteredRows
   
@@ -75,16 +73,19 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
     { header: 'Round', cell: (r) => r.n },
     { header: 'By', cell: (r) => r.by },
     { header: 'Action', cell: (r) => ACTION[r.action] ?? r.action },
-    { header: 'Total (units)', num: true, cell: (r) => fmtInt(r.qty) },
+    { header: 'Total (units)', num: true, cell: (r) => r.qty == null ? '–' : fmtInt(r.qty) },
     { header: 'SKUs changed', num: true, cell: (r) => (r.changed === null || r.changed === undefined ? '–' : r.changed) },
     { header: 'Reason', cell: (r) => r.reason },
   ]
   const scale = () => {
-    if (!scaleTo || !d.total) return
-    const k = scaleTo / d.total
+    if (!scaleTo || !total) return
+    const k = scaleTo / total
     setDraft(Object.fromEntries(rows.map((r: any) => [lineKey(r), Math.round(r.qty * k)])))
   }
-  const send = (action: 'counter' | 'final' | 'revise', done: string) => run('region/respond', { role: my, action, lines: Object.fromEntries(allRows.map((r: any) => [lineKey(r), val(r)])), reason }, done)
+  const send = (action: 'counter' | 'final' | 'revise', done: string) => {
+    const editableRows = role === 'sd' ? submittedRows : allRows
+    run('region/respond', { role: my, action, lines: Object.fromEntries(editableRows.map((r: any) => [lineKey(r), val(r)])), reason }, done)
+  }
   const canEdit = mine
   return (
     <Tile className="card stack-05">
@@ -98,7 +99,7 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
         { label: 'Against last year', value: <Delta value={gap(d.total, lyT)} text={fmtSigned(gap(d.total, lyT), 1)} />, sublabel: `Same month, ${fmtN(lyT)}` },
         { label: 'Lines', value: d.rows.length, sublabel: `${entry.channels} channels, ${entry.skus} SKUs in this region` },
       ]} />
-      {rounds.length > 0 && <DataCard id={`rr-${region}`} title="Back and forth so far" description={`Every round between the S&D Head and the ${region} Regional Head, with the reason given`} cols={roundCols} rows={rounds} itemsLabel="Rounds per page" rowKey={(r) => String(r.n)} />}
+      {rounds.length > 0 && <DataCard id={`rr-${region}`} title="Back and forth so far" description={`Every round between the S&D Head and the ${region} Regional Head, with the reason given. Older totals are omitted where submission scope was not recorded.`} cols={roundCols} rows={rounds} itemsLabel="Rounds per page" rowKey={(r) => String(r.n)} />}
       <LineGrid rows={rows} label={`${region} ${family} by channel and SKU`} editable={canEdit} draft={draft} onChange={(k, v) => setDraft({ ...draft, [k]: v })} showRegion={false} />
       {d.status === 'agreed' ? (
         <div className="stack-03">
@@ -116,10 +117,17 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
           <TextInput id={`reason-${region}`} size="md" labelText="Reason" helperText="Needed for a counter-offer, a revision or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
           <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty, so nothing can be submitted yet. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
           <div className="row-03">
-            {turnMine && <Button kind="primary" size="md" onClick={() => run('region/respond', { role: my, action: 'accept' }, `✓ Accepted at ${fmtInt(d.total)} units`)}>Accept {fmtInt(d.total)} units</Button>}
-            {turnMine
-              ? <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', `Counter-offer sent: ${fmtInt(total)} units`)}>Send counter-offer</Button>
-              : <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('revise', `Number revised: ${fmtInt(total)} units`)}>Revise my number</Button>}
+            {turnMine && changed === 0 && (
+              <Button kind="primary" size="md" onClick={() => run('region/respond', { role: my, action: 'accept' }, `✓ Accepted at ${fmtInt(d.total)} units${role === 'sd' ? ' and sent to channel heads' : ''}`)}>
+                {role === 'sd' ? `Accept & Send to BU · ${fmtInt(d.total)} units` : `Accept ${fmtInt(d.total)} units`}
+              </Button>
+            )}
+            {turnMine && changed > 0 && (
+              <Button kind="primary" size="md" disabled={!reason.trim() || incomplete > 0} onClick={() => send('counter', `Counter sent to ${role === 'sd' ? `${region} Regional Head` : 'S&D Head'}: ${fmtInt(total)} units`)}>
+                {role === 'sd' ? 'Send counter to Regional Head' : 'Send counter to S&D Head'}
+              </Button>
+            )}
+            {!turnMine && <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('revise', `Number revised: ${fmtInt(total)} units`)}>Revise my number</Button>}
             {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', `✓ Final call made: ${fmtInt(total)} units`)}>Make the final call</Button>}
           </div>
         </div>
