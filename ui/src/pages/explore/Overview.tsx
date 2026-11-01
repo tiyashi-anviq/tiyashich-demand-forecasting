@@ -36,7 +36,7 @@ export default function Overview({ f, opts, onClear }: { f: Filters; opts: Optio
               { label: 'Unfulfilled Orders', value: fmtN(k.unserved), sublabel: 'Ordered but not invoiced' },
               ...(k.yoy_win ? [{ label: `YoY Orders Change`, sublabel: win, value: <Delta value={k.yoy_orders} text={fmtSigned(k.yoy_orders, 1)} /> }] : []),
               ...(k.yoy_win ? [{ label: `YoY Sales Change`, sublabel: win, value: <Delta value={k.yoy_sales} text={fmtSigned(k.yoy_sales, 1)} /> }] : []),
-              { label: 'Data Coverage', value: k.weeks, sublabel: `${fmtDate(k.date_from)} to ${fmtDate(k.date_to)}` },
+              { label: 'Data Coverage', value: `${k.weeks.toLocaleString('en-IN')} weeks`, sublabel: `${fmtDate(k.date_from)} to ${fmtDate(k.date_to)}` },
             ]} />
             <Findings items={d.findings} title="What the data says" />
             <ChartCard title="Monthly Trends" subtitle="Orders received vs sales invoiced (complete months only)" label="Monthly volume trends"

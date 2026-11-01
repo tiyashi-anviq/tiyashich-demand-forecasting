@@ -6,8 +6,8 @@ import { CHART_HEIGHT, useChartKit, type Tone } from './kit'
 export type Bar = { label: string; value: number; tone?: Tone }
 
 /** One bar per item. Horizontal for names, vertical for periods or ranges. The axis title carries the unit. */
-export default function BarsChart({ items, horizontal, yTitle, xTitle, fmt = fmtN, label, domain, log }: {
-  items: Bar[]; horizontal?: boolean; yTitle: string; xTitle?: string; fmt?: (n: number) => string; label: string; domain?: [number, number]; log?: boolean
+export default function BarsChart({ items, horizontal, yTitle, xTitle, fmt = fmtN, label, domain, log, barThickness = 48 }: {
+  items: Bar[]; horizontal?: boolean; yTitle: string; xTitle?: string; fmt?: (n: number) => string; label: string; domain?: [number, number]; log?: boolean; barThickness?: number
 }) {
   const { tone, base } = useChartKit()
   const data = items.map((b) => ({ group: b.label, value: b.value }))
@@ -20,7 +20,7 @@ export default function BarsChart({ items, horizontal, yTitle, xTitle, fmt = fmt
     accessibility: { svgAriaLabel: label },
     axes: horizontal ? { left: names, bottom: value } : { bottom: names, left: value },
     legend: { enabled: false },
-    bars: { maxWidth: 48 },
+    bars: { maxWidth: barThickness },
     color: { scale: Object.fromEntries(items.map((b) => [b.label, tone(b.tone ?? 1)])) },
     tooltip: { valueFormatter: (v: number | string) => (typeof v === 'number' ? fmt(v) : String(v)) },
   }

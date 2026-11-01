@@ -5,7 +5,6 @@ import { fmtN, fmtPct } from '../../lib/format'
 import { queryOf, type Filters, type Options } from '../../lib/filters'
 import { useView } from '../../lib/useView'
 import BarsChart from '../../charts/BarsChart'
-import BubbleScatter from '../../charts/BubbleScatter'
 import StackedChart from '../../charts/StackedChart'
 import { ChartCard } from '../../ui/ChartCard'
 import { DataCard, type Col } from '../../ui/DataCard'
@@ -15,7 +14,6 @@ import { ViewShell } from '../../ui/ViewShell'
 const SEGS = ['smooth', 'erratic', 'intermittent', 'lumpy'] as const
 const SEG_TONE = { smooth: 1, erratic: 4, intermittent: 3, lumpy: 2 } as const
 const SEG_TAG: Record<string, any> = { smooth: 'blue', erratic: 'warm-gray', intermittent: 'teal', lumpy: 'red' }
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
 const tally = (rows: any[], k: string) => {
   const m = new Map<string, number>()
@@ -54,11 +52,6 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
   return (
     <ViewShell query={q} errorTitle="Could not load forecastability" onClear={onClear}>
       {(d) => {
-        const pts: any[] = d.points
-        const xMax = Math.min(8, Math.max(2, ...pts.map((p) => p.adi)) * 1.05)
-        const yMax = Math.min(3, Math.max(1, ...pts.map((p) => p.cv2)) * 1.05)
-        // when every series sells almost every week, the 'weeks between sales' axis is one stripe: spread the dots by variability and volume instead
-        const flat = pts.length > 0 && Math.max(...pts.map((p) => p.adi)) < 1.32
         const famCols: Col<any>[] = [
           { header: 'Family', cell: (b) => b.family, sort: (b) => String(b.family).toLowerCase() },
           { header: 'Months', num: true, cell: (b) => b.months },
@@ -99,28 +92,13 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
             {open && <SeriesView seg={d.summary.find((x: any) => x.id === open)} d={d} onClose={() => setOpen(null)} />}
 
             <div className="grid">
-              {flat ? (
-                <ChartCard title="Series by Forecastability" subtitle="Number of weekly-selling series in each forecastability group."
-                  label="Series by forecastability"
-                  headers={['Series', 'Variability', 'Type', 'Units']} 
-                  rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
-                  chart={<BarsChart horizontal items={d.summary.map((s: any) => ({ label: s.label, value: s.count, tone: SEG_TONE[s.id as keyof typeof SEG_TONE] }))} yTitle="Series" fmt={(n) => Math.round(n).toLocaleString('en-IN')} label="Series by forecastability" />}
-                  note="Weekly sellers only. Smooth series are easiest to forecast; intermittent and lumpy series may need aggregation or manual review." />
-              ) : (
-              <ChartCard title="Series Regularity vs Variability" subtitle="Each dot is one series. Dot size = volume sold. Switch to table view for details."
-                label="Series classification"
-                headers={['Series', 'Weeks between sales', 'Variability', 'Type', 'Units']} 
-                rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.adi.toFixed(2), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
-                chart={<BubbleScatter dots={pts.map((p) => ({ group: cap(p.seg), x: p.adi, y: p.cv2, r: p.vol }))} tones={Object.fromEntries(SEGS.map((s) => [cap(s), SEG_TONE[s]]))}
-                  xTitle="Weeks between sales (ADI)" yTitle="Variability (CV²)" xLine={1.32} yLine={0.49} xMax={xMax} yMax={yMax} label="Series classification" />}
-                note="Four quadrants = four strategies. Bottom-left (Blue, Smooth) = weekly boost. Top-right (Red, Lumpy) = forecast at region/month level. Lines at 1.32 & 0.49 are standard cut-offs." />
-              
-              )}
-              <ChartCard title="Forecast Complexity by Family" subtitle="Series count by type. More smooth (blue) = easier to forecast." label="Series complexity by family"
-                headers={['Family', ...SEGS.map(cap)]} rows={d.by_family.map((r: any) => [r.family, ...SEGS.map((k) => r[k])])}
-                chart={<StackedChart labels={d.by_family.map((r: any) => r.family.split(' ')[0])} xTitle="Family" yTitle="Series (count)" fmt={(n) => String(Math.round(n))}
-                  series={SEGS.map((k) => ({ name: cap(k), values: d.by_family.map((r: any) => r[k]), tone: SEG_TONE[k] }))} label="Series complexity by family" />}
-                note="Families with more smooth (blue) series are easier to forecast accurately. Lumpy (red) series need aggregated forecasts." />
+              <div className="span-all">
+                <ChartCard title="Forecastability Mix by Family" subtitle="Share of each family's series in each forecastability group. Compare the mix, not family size." label="Forecastability mix by family"
+                  headers={['Family', ...SEGS.map((k) => k[0].toUpperCase() + k.slice(1))]} rows={d.by_family.map((r: any) => [r.family, ...SEGS.map((k) => r[k])])}
+                  chart={<StackedChart horizontal share labels={d.by_family.map((r: any) => r.family)} xTitle="Family" yTitle="Share of series (%)"
+                    series={SEGS.map((k) => ({ name: k[0].toUpperCase() + k.slice(1), values: d.by_family.map((r: any) => r[k]), tone: SEG_TONE[k] }))} label="Forecastability mix by family" />}
+                  note="Each family totals 100%. Switch to Table for exact series counts. Smooth series are easiest to forecast; intermittent and lumpy series may need aggregation or manual review." />
+              </div>
               {d.baseline.length ? (
                 <ChartCard title="Naive Forecast Baseline" subtitle="Error using last year's value as forecast (test months)" label="Baseline forecast error by family"
                   headers={['Family', 'Months', 'Total error (%)', 'Under (%)', 'Over (%)']} rows={d.baseline.map((b: any) => [b.family, b.months, fmtPct(b.wape, 1), fmtPct(b.under, 1), fmtPct(b.over, 1)])}

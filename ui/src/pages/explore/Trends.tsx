@@ -61,7 +61,7 @@ export default function Trends({ f, opts, onClear }: { f: Filters; opts: Options
                 chart={<TrendChart x={ms} series={[{ name: 'Seasonal factor', values: dc.seasonal, tone: 1 }, { name: 'Remainder factor', values: dc.remainder, tone: 5 }]} yTitle="Factor (1.00 is typical)" yFmt={(n) => n.toFixed(2)} zero={false} label="Seasonality" />} />
               <ChartCard title="Seasonal Strength by Month" subtitle="Above 1.00 = stronger than typical" label="Seasonal heatmap"
                 headers={['Family', ...d.months_labels]} rows={d.heatmap.map((h: any) => [h.family, ...h.index.map((v: number) => v.toFixed(2))])}
-                chart={<HeatChart rows={d.heatmap.map((h: any) => h.family)} cols={d.months_labels} values={d.heatmap.map((h: any) => h.index)} diverging domain={[0.5, 1.5]} fmt={(n) => n.toFixed(2)} legendTitle="Index" label="Seasonal heatmap" />} />
+                chart={<HeatChart rows={d.heatmap.map((h: any) => h.family)} cols={d.months_labels} values={d.heatmap.map((h: any) => h.index)} diverging domain={[0.5, 1.5]} fmt={(n) => n.toFixed(2)} legendTitle="Index" legendTicks={Array.from({ length: 11 }, (_, i) => Number((0.5 + i * 0.1).toFixed(1)))} label="Seasonal heatmap" />} />
               <ChartCard title="Annual Pattern" subtitle="Deviation from typical month" label="Annual seasonality"
                 headers={['Month', 'Factor']} rows={d.seasonal_profile.map((m: any) => [m.m, m.v.toFixed(2)])}
                 chart={<BarsChart items={d.seasonal_profile.map((m: any) => ({ label: m.m, value: m.v - 1, tone: m.v >= 1 ? 1 : 2 }))} yTitle="vs Typical (%)" fmt={(n) => fmtSigned(n, 0)} label="Annual seasonality" />} />

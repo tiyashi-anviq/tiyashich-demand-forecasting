@@ -3,8 +3,8 @@ import { HeatmapChart } from '@carbon/charts-react'
 import { CHART_HEIGHT, useChartKit } from './kit'
 
 /** A grid of values, rows by columns. `diverging` runs from orange (low) through a neutral middle to blue (high). */
-export default function HeatChart({ rows, cols, values, diverging, domain, fmt, label, legendTitle }: {
-  rows: string[]; cols: string[]; values: (number | null)[][]; diverging?: boolean; domain?: [number, number]; fmt: (n: number) => string; label: string; legendTitle: string
+export default function HeatChart({ rows, cols, values, diverging, domain, fmt, label, legendTitle, legendTicks }: {
+  rows: string[]; cols: string[]; values: (number | null)[][]; diverging?: boolean; domain?: [number, number]; fmt: (n: number) => string; label: string; legendTitle: string; legendTicks?: number[]
 }) {
   const { tone, token, base } = useChartKit()
   const data = rows.flatMap((r, i) => cols.flatMap((c, j) => (values[i]?.[j] === null || values[i]?.[j] === undefined ? [] : [{ group: r, key: c, value: values[i][j] as number }])))
@@ -18,5 +18,18 @@ export default function HeatChart({ rows, cols, values, diverging, domain, fmt, 
     color: { gradient: { enabled: true, colors: diverging ? [tone(2), token('color.layer.01'), tone(1)] : [token('color.layer.01'), tone(1)] } },
     tooltip: { valueFormatter: (v: number | string) => (typeof v === 'number' ? fmt(v) : String(v)) },
   }
-  return <HeatmapChart data={data} options={options} />
+  return (
+    <div className="heat-chart">
+      <HeatmapChart data={data} options={options} />
+      {legendTicks && (
+        <div className={`heat-color-legend${diverging ? ' heat-color-legend-diverging' : ''}`} role="img" aria-label={`${legendTitle}: ${legendTicks.map(fmt).join(', ')}`}>
+          <span className="heat-color-legend-title">{legendTitle}</span>
+          <div className="heat-color-gradient" aria-hidden="true" />
+          <div className="heat-color-ticks" aria-hidden="true">
+            {legendTicks.map((tick) => <span key={tick}>{fmt(tick)}</span>)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }

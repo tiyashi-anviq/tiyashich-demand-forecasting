@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowUp } from '@carbon/icons-react'
 import { ContentSwitcher, InlineLoading, Switch, Tag } from '@reiq/ui/carbon'
+import { PageSection } from '@reiq/ui'
 import { fmtPct, fmtSigned } from '../../lib/format'
 import { queryOf, type Filters, type Options } from '../../lib/filters'
 import { useView } from '../../lib/useView'
@@ -16,6 +17,7 @@ import { MiniBar } from '../../ui/MiniBar'
 import { ViewShell } from '../../ui/ViewShell'
 
 const GROUP_LABEL: Record<string, string> = { calendar: 'Calendar', weather: 'Weather', price: 'Price and promo', commercial: 'Downstream', macro: 'Macro', identity: 'Base level' }
+const GROUP_CHART_LABEL: Record<string, string> = { calendar: 'Calendar', weather: 'Weather', price: 'Price & promo', commercial: 'Downstream', macro: 'Commodity', identity: 'Product mix' }
 const VERDICT: Record<string, any> = { Keep: 'green', Test: 'blue', Drop: 'gray' }
 const pts = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n * 100).toFixed(1)} pts`
 
@@ -80,54 +82,65 @@ export default function Drivers({ f, opts, onClear }: { f: Filters; opts: Option
         return (
           <>
             <Findings items={d.findings} title="What the data says" />
-            <StatRow items={[
-              { label: 'Test Period Error (%)', value: fmtPct(v.full.monthly_wape, 1), info: 'WAPE on unseen test months' },
-              { label: 'Under-forecast (%)', value: fmtPct(v.full.under_pct, 1), sublabel: 'Lost sales risk' },
-              { label: 'Over-forecast (%)', value: fmtPct(v.full.over_pct, 1), sublabel: 'Excess stock risk' },
-              { label: 'Variance Explained (R²)', value: v.full.r2.toFixed(2), info: '0 to 1 scale, higher is better' },
-            ]} />
-            <p className="supporting">Test period: {v.n_test.toLocaleString('en-IN')} weeks from {String(v.test_start).slice(0, 7)} (unseen by model)</p>
-
-            <div className="grid">
-              <ChartCard title="Feature Group Importance" subtitle="Model attention by covariate group (SHAP)" label="Feature importance"
-                headers={['Group', 'Share (%)']} rows={d.groups.map((g: any) => [g.label, fmtPct(g.share, 1)])}
-                chart={<BarsChart horizontal items={d.groups.map((g: any) => ({ label: g.label, value: g.share, tone: g.group === 'identity' ? 8 : 1 }))} yTitle="Share (%)" fmt={(n) => fmtPct(n, 0)} label="Feature importance" />} />
-              <ChartCard title="Ablation Analysis" subtitle="Error increase when group removed (positive = helpful)" label="Ablation study"
+            <PageSection title="Model performance" note={`Holdout test: ${v.n_test.toLocaleString('en-IN')} weeks from ${String(v.test_start).slice(0, 7)}; these weeks were not used to fit the model.`}>
+              <StatRow items={[
+                { label: 'Test Period Error (%)', value: fmtPct(v.full.monthly_wape, 1), info: 'WAPE on unseen test months' },
+                { label: 'Under-forecast (%)', value: fmtPct(v.full.under_pct, 1), sublabel: 'Lost sales risk' },
+                { label: 'Over-forecast (%)', value: fmtPct(v.full.over_pct, 1), sublabel: 'Excess stock risk' },
+                { label: 'Variance Explained (R²)', value: v.full.r2.toFixed(2), info: '0 to 1 scale, higher is better' },
+              ]} />
+              <ChartCard title="Ablation Analysis" subtitle="Change in test error when a feature group is removed; positive means the group helps." label="Ablation study"
                 headers={['Group', 'Error without (%)', 'Change']} rows={v.ablation.map((a: any) => [a.label, fmtPct(a.monthly_wape, 1), pts(a.wape_change)])}
-                chart={<BarsChart horizontal items={v.ablation.map((a: any) => ({ label: a.label, value: a.wape_change * 100, tone: a.wape_change > 0.0005 ? 1 : 8 }))} yTitle="Error change (pts)" fmt={(n) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`} label="Ablation study" />}
-                note="Gray = no improvement on test data" />
-            </div>
+                chart={<BarsChart horizontal barThickness={16} items={v.ablation.map((a: any) => ({ label: a.label, value: a.wape_change * 100, tone: a.wape_change > 0.0005 ? 1 : 8 }))} yTitle="Error change (pts)" fmt={(n) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`} label="Ablation study" />}
+                note="A group with no increase in holdout error may add little predictive value." />
+            </PageSection>
 
-            <DataCard id="rank" title="Feature Rankings" description="Click a row to view its response curve below. Verdict is a guideline, not a rule."
-              cols={rankCols} rows={rows} itemsLabel="Covariates per page" rowKey={(r) => r.id} onRow={(r) => setFeature(r.id)} selected={(r) => r.id === d.feature} defaultOpen
-              note="SHAP: feature impact on predictions. MI: nonlinear relationships. Effect: high vs low decile." />
-
-            <div className="grid">
-              <ChartCard title={`How demand responds to ${resp.label.toLowerCase()}`} subtitle="Demand relative to each series' usual level, by range of the covariate" label={`Demand response to ${resp.label.toLowerCase()}`}
+            <PageSection title="What influences demand" note="See which feature groups matter, then select an individual feature to inspect its response curve.">
+              <ChartCard title="Feature Group Importance" subtitle="Share of model attribution by covariate group (SHAP)" label="Feature importance"
+                headers={['Group', 'Share (%)']} rows={d.groups.map((g: any) => [g.label, fmtPct(g.share, 1)])}
+                chart={<BarsChart horizontal barThickness={20} items={d.groups.map((g: any) => ({ label: GROUP_CHART_LABEL[g.group] ?? g.label, value: g.share, tone: g.group === 'identity' ? 8 : 1 }))} yTitle="Share (%)" fmt={(n) => fmtPct(n, 0)} label="Feature importance" />} />
+              <DataCard id="rank" title="Feature Rankings" description="Select a row to update the response curve. Verdicts are guidelines, not rules."
+                cols={rankCols} rows={rows} itemsLabel="Covariates per page" rowKey={(r) => r.id} onRow={(r) => setFeature(r.id)} selected={(r) => r.id === d.feature} defaultOpen
+                note="SHAP measures feature impact on predictions; mutual information captures nonlinear relationships; effect compares high and low ranges." />
+              <ChartCard title={`Demand response: ${resp.label}`} subtitle="Demand relative to each series' usual level, across ranges of the selected feature." label={`Demand response to ${resp.label.toLowerCase()}`}
                 headers={['Range', ...resp.series.map((s: any) => s.name)]} rows={resp.x.map((x: string, i: number) => [x, ...resp.series.map((s: any) => fmtSigned(s.values[i], 1))])}
                 chart={resp.series.length ? <TrendChart kind="labels" x={resp.x} series={resp.series.map((s: any, k: number) => ({ name: s.name, values: s.values, tone: (k + 1) as any }))} yTitle="Against the usual level (%)" yFmt={(n) => fmtSigned(n, 0)} zero={false} label={`Demand response to ${resp.label.toLowerCase()}`} pointsAlways />
                   : <p className="supporting">Not enough data to draw this.</p>} />
-              <div style={{ gridColumn: "1 / -1" }}><ChartCard title="Do covariates lead demand?" subtitle="Correlation with demand when the covariate is shifted back by 0 to 6 weeks" label="Correlation of each covariate with demand at each lag"
-                toolbar={<ContentSwitcher size="sm" selectedIndex={lagMode === 'adjusted' ? 0 : 1} onChange={({ index = 0 }) => setLagMode(index === 0 ? 'adjusted' : 'raw')}>
-                  <Switch name="adjusted" text="Without seasonality" /><Switch name="raw" text="As is" /></ContentSwitcher>}
-                headers={['Covariate', ...lagHead]} rows={lag.rows.map((r: any) => [r.label, ...r[lagMode].map((x: number | null) => (x === null ? '' : x.toFixed(2)))])}
-                chart={<HeatChart rows={lag.rows.map((r: any) => r.label)} cols={lagHead} values={lag.rows.map((r: any) => r[lagMode])} diverging domain={[-0.5, 0.5]} fmt={(n) => n.toFixed(2)} legendTitle="Correlation" label="Correlation of each covariate with demand at each lag" />}
-                note={`${lagMode === 'adjusted' ? 'The usual seasonal pattern is taken out of both sides, so this shows short-run effects.' : 'Seasonal patterns line up with each other, so this overstates how closely covariates track demand.'} Strongest lag: ${bestNote}.`} /></div>
-              <ChartCard title="Does the Diwali run-up show in the data?" subtitle="Average demand by week relative to Diwali (negative is before), against the reference index in your data pack" label="Demand by week relative to Diwali"
-                headers={['Weeks from Diwali', ...evSeries.map((s: any) => s.name)]} rows={ev.weeks.map((w: number, i: number) => [w, ...evSeries.map((s: any) => (s.values[i] === null || s.values[i] === undefined ? '' : s.values[i].toFixed(2)))])}
-                chart={<TrendChart kind="labels" x={ev.weeks.map((w: number) => String(w))} series={evSeries} yTitle="Demand against the usual level (index)" yFmt={(n) => n.toFixed(2)} zero={false} label="Demand by week relative to Diwali" />}
-                note="Reference lines are the pattern your data pack says to expect. If they differ from what happened, the model needs a sharper Diwali feature than a simple window." />
-              <DataCard id="example" title="Example: Rainfall vs Battery Demand" description="Weekly correlation by region (validates framework assumption)"
-                cols={exCols} rows={d.example_check.rows} itemsLabel="Regions per page" rowKey={(r) => r.region} defaultOpen
-                note="Shows how rainfall correlates with battery orders. After removing seasonal patterns, correlation drops (last column), confirming both follow monsoon calendar." />
-              <ChartCard title="Which covariates repeat each other?" subtitle="Correlation among the 12 leading covariates. Pairs near ±1 carry the same information." label="Correlation among the leading covariates"
-                headers={['Covariate', ...d.collinearity.labels]} rows={d.collinearity.matrix.map((r: number[], i: number) => [d.collinearity.labels[i], ...r.map((x) => x.toFixed(2))])}
-                chart={<HeatChart rows={d.collinearity.labels} cols={d.collinearity.labels.map((_: string, i: number) => String(i + 1))} values={d.collinearity.matrix} diverging domain={[-1, 1]} fmt={(n) => n.toFixed(2)} legendTitle="Correlation" label="Correlation among the leading covariates" />}
-                note="Columns are numbered in the order of the rows; the table view names them." />
-              <DataCard id="engineered" title="Feature Engineering Details" description="How raw metrics become model features (click to expand)" cols={engCols} rows={d.engineered} itemsLabel="Factors per page" rowKey={(e) => e.factor} />
-            </div>
+            </PageSection>
 
-            <DataCard id="leakage" title="Data Availability Check" description="Are these features available at forecast time? (click to expand)" cols={leakCols} rows={d.leakage} itemsLabel="Groups per page" rowKey={(l) => l.group} />
+            <PageSection title="Timing and event patterns" note="Check whether signals happen before demand, and how demand behaves around a major seasonal event.">
+              <div className="grid">
+                <ChartCard title="Do covariates lead demand?" subtitle="Correlation with demand when the covariate is shifted back by 0 to 6 weeks." label="Correlation of each covariate with demand at each lag"
+                  toolbar={<ContentSwitcher size="sm" selectedIndex={lagMode === 'adjusted' ? 0 : 1} onChange={({ index = 0 }) => setLagMode(index === 0 ? 'adjusted' : 'raw')}>
+                    <Switch name="adjusted" text="Without seasonality" /><Switch name="raw" text="As is" /></ContentSwitcher>}
+                  headers={['Covariate', ...lagHead]} rows={lag.rows.map((r: any) => [r.label, ...r[lagMode].map((x: number | null) => (x === null ? '' : x.toFixed(2)))])}
+                  chart={<HeatChart rows={lag.rows.map((r: any) => r.label)} cols={lagHead} values={lag.rows.map((r: any) => r[lagMode])} diverging domain={[-0.5, 0.5]} fmt={(n) => n.toFixed(1)} legendTitle="Correlation" legendTicks={Array.from({ length: 11 }, (_, i) => Number((-0.5 + i * 0.1).toFixed(1)))} label="Correlation of each covariate with demand at each lag" />}
+                  note={`${lagMode === 'adjusted' ? 'The usual seasonal pattern is removed from both sides to highlight short-run relationships.' : 'Seasonal patterns remain, so correlations may reflect shared seasonality.'} Strongest lag: ${bestNote}.`} />
+                <ChartCard title="Does the Diwali run-up show in the data?" subtitle="Average demand by week relative to Diwali (negative is before), against the reference index in your data pack" label="Demand by week relative to Diwali"
+                  headers={['Weeks from Diwali', ...evSeries.map((s: any) => s.name)]} rows={ev.weeks.map((w: number, i: number) => [w, ...evSeries.map((s: any) => (s.values[i] === null || s.values[i] === undefined ? '' : s.values[i].toFixed(2)))])}
+                  chart={<TrendChart kind="labels" x={ev.weeks.map((w: number) => String(w))} series={evSeries} yTitle="Demand against the usual level (index)" yFmt={(n) => n.toFixed(2)} zero={false} label="Demand by week relative to Diwali" />}
+                  note="Reference lines are the pattern your data pack says to expect. If they differ from what happened, the model needs a sharper Diwali feature than a simple window." />
+              </div>
+            </PageSection>
+
+            <PageSection title="Model diagnostics" note="Use these checks to spot redundant signals and verify real-world assumptions.">
+              <div className="grid">
+                <DataCard id="example" title="Example: Rainfall vs Battery Demand" description="Weekly correlation by region (validates framework assumption)"
+                  cols={exCols} rows={d.example_check.rows} itemsLabel="Regions per page" rowKey={(r) => r.region} defaultOpen
+                  note="Shows how rainfall correlates with battery orders. After removing seasonal patterns, correlation drops (last column), confirming both follow monsoon calendar." />
+                <ChartCard title="Which covariates repeat each other?" subtitle="Correlation among the 12 leading covariates. Pairs near ±1 carry the same information." label="Correlation among the leading covariates"
+                  headers={['Covariate', ...d.collinearity.labels]} rows={d.collinearity.matrix.map((r: number[], i: number) => [d.collinearity.labels[i], ...r.map((x) => x.toFixed(2))])}
+                  chart={<HeatChart rows={d.collinearity.labels} cols={d.collinearity.labels.map((_: string, i: number) => String(i + 1))} values={d.collinearity.matrix} diverging domain={[-1, 1]} fmt={(n) => n.toFixed(2)} legendTitle="Correlation" label="Correlation among the leading covariates" />}
+                  note="Columns are numbered in the order of the rows; the table view names them." />
+              </div>
+            </PageSection>
+
+            <PageSection title="Feature readiness" note="See how raw data becomes model inputs and whether each signal is available when a forecast is made.">
+              <div className="grid">
+                <DataCard id="engineered" title="Feature Engineering Details" description="How raw metrics become model features (click to expand)" cols={engCols} rows={d.engineered} itemsLabel="Factors per page" rowKey={(e) => e.factor} />
+                <DataCard id="leakage" title="Data Availability Check" description="Are these features available at forecast time? (click to expand)" cols={leakCols} rows={d.leakage} itemsLabel="Groups per page" rowKey={(l) => l.group} />
+              </div>
+            </PageSection>
           </>
         )
       }}
