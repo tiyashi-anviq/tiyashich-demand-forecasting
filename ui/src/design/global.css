@@ -27,6 +27,9 @@
 .skeleton-tile { inline-size: 100%; block-size: var(--cds-spacing-10); }
 .skeleton-chart { inline-size: 100%; block-size: var(--reiq-size-chart-card-body); }
 
+/* Dense minor gridlines compete with the data on logarithmic bar charts. */
+.log-bars-chart :is(g.x.grid, g.y.grid) { display: none; }
+
 /* The focused page shell: one column, no side rail. */
 .settings-column { max-inline-size: 64rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--cds-spacing-06); }
 
