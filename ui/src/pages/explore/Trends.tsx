@@ -51,11 +51,11 @@ export default function Trends({ f, opts, onClear }: { f: Filters; opts: Options
             </ContentSwitcher>
             <ChartCard title="Monthly Volume Trends" subtitle="Diwali and Durga Puja marked. Log scale when needed for readability." label="Monthly trends"
               headers={t.headers} rows={t.rows}
-              chart={<TrendChart autoLog x={ms} series={series} yTitle="Units" yFmt={(n) => fmtN(n)} markers={markers} label="Monthly trends" />} />
+              chart={<TrendChart autoLog x={ms} series={series} yTitle="Units per month" yFmt={(n) => fmtN(n)} markers={markers} label="Monthly trends" />} />
             <div className="grid">
               <ChartCard title="Trend Component" subtitle="Long-run level underlying monthly variation" label="Trend analysis"
                 headers={dt.headers} rows={dt.rows}
-                chart={<TrendChart x={ms} series={parts} yTitle="Units" yFmt={(n) => fmtN(n)} label="Trend analysis" />} />
+                chart={<TrendChart x={ms} series={parts} yTitle="Units per month" yFmt={(n) => fmtN(n)} label="Trend analysis" />} />
               <ChartCard title="Seasonal Pattern" subtitle="1.00 is typical. Remainder shows unexplained variation." label="Seasonality"
                 headers={dt.headers} rows={dt.rows}
                 chart={<TrendChart x={ms} series={[{ name: 'Seasonal factor', values: dc.seasonal, tone: 1 }, { name: 'Remainder factor', values: dc.remainder, tone: 5 }]} yTitle="Factor (1.00 is typical)" yFmt={(n) => n.toFixed(2)} zero={false} label="Seasonality" />} />

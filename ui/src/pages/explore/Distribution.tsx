@@ -80,8 +80,8 @@ export default function Distribution({ f, opts, onClear }: { f: Filters; opts: O
             </Tile>
 
             <div className="grid">
-              <ChartCard title="Weekly Sales Volume" subtitle="Distribution across all series (log scale for readability)" label="Weekly distribution"
-                headers={['From (units)', 'To (units)', 'Weekly values']} rows={d.histogram.map((h: any) => [fmtN(h.lo, 0), fmtN(h.hi, 0), h.n])}
+              <ChartCard title="Weekly Sales Volume" subtitle="Distribution of positive sales values across series-weeks (log scale for readability)" label="Weekly distribution"
+                headers={['From (units/week)', 'To (units/week)', 'Series-weeks (count)']} rows={d.histogram.map((h: any) => [fmtN(h.lo, 0), fmtN(h.hi, 0), h.n])}
                 chart={<BarsChart items={d.histogram.map((h: any) => {
                   // Simplify labels and color-code by volume range
                   const label = h.lo < 1000 ? fmtN(h.lo, 0) : `${fmtN(h.lo / 1000, 0)}k`
@@ -92,7 +92,7 @@ export default function Distribution({ f, opts, onClear }: { f: Filters; opts: O
                   else if (h.hi <= 10000) tone = 3  // High - teal
                   else tone = 2  // Extreme - orange
                   return { label, value: Math.max(1, h.n), tone }
-                })} yTitle="Weekly values (count)" xTitle="Units per week" log fmt={(n) => fmtN(n, 0)} label="Weekly distribution" />}
+                })} yTitle="Series-weeks (count)" xTitle="Units per week" log fmt={(n) => fmtN(n, 0)} label="Weekly distribution" />}
                 note={`Color-coded: Gray (under 100), Blue (100-5k), Teal (5k-10k), Orange (over 10k). Median: ${fmtN(d.median, 0)} units. Most weeks (${fmtPct(medVol / totalValues, 0)}) are typical.`} />
               <ChartCard title="SKU Concentration (80/20 Rule)" subtitle={`Pareto analysis of ${d.pareto.skus} SKUs`} label="Pareto curve"
                 headers={['SKU rank', 'Cumulative share (%)']} rows={d.pareto.curve.map((c: any) => [c.rank, fmtPct(c.share, 1)])}

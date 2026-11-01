@@ -41,7 +41,7 @@ export default function Overview({ f, opts, onClear }: { f: Filters; opts: Optio
             <Findings items={d.findings} title="What the data says" />
             <ChartCard title="Monthly Trends" subtitle="Orders received vs sales invoiced (complete months only)" label="Monthly volume trends"
               headers={t.headers} rows={t.rows}
-              chart={<TrendChart x={ms} series={monthly} yTitle="Units" yFmt={(n) => fmtN(n)} label="Monthly volume trends" />} />
+              chart={<TrendChart x={ms} series={monthly} yTitle="Units per month" yFmt={(n) => fmtN(n)} label="Monthly volume trends" />} />
             <div className="grid">
               {share('family', 'Volume by Family', 'Family')}
               {share('channel', 'Volume by Channel', 'Channel')}
