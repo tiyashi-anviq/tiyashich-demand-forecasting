@@ -95,7 +95,7 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
               <div className="span-all">
                 <ChartCard title="Forecastability Mix by Family" subtitle="Share of each family's series in each forecastability group. Compare the mix, not family size." label="Forecastability mix by family"
                   headers={['Family', ...SEGS.map((k) => k[0].toUpperCase() + k.slice(1))]} rows={d.by_family.map((r: any) => [r.family, ...SEGS.map((k) => r[k])])}
-                  chart={<StackedChart horizontal share labels={d.by_family.map((r: any) => r.family)} xTitle="Family" yTitle="Share of series (%)"
+                  chart={<StackedChart horizontal share barThickness={16} labels={d.by_family.map((r: any) => r.family)} xTitle="Family" yTitle="Share of series (%)"
                     series={SEGS.map((k) => ({ name: k[0].toUpperCase() + k.slice(1), values: d.by_family.map((r: any) => r[k]), tone: SEG_TONE[k] }))} label="Forecastability mix by family" />}
                   note="Each family totals 100%. Switch to Table for exact series counts. Smooth series are easiest to forecast; intermittent and lumpy series may need aggregation or manual review." />
               </div>

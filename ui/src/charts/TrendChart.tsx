@@ -76,5 +76,5 @@ export default function TrendChart({
     events.addEventListener('scatter-click', handler)
     return () => events.removeEventListener('scatter-click', handler)
   })
-  return <LineChart key={`${x.length}|${series.length}|${x[0]}`} ref={ref} data={data} options={options} />
+  return <div className={logAxis ? 'log-trend-chart' : undefined}><LineChart key={`${x.length}|${series.length}|${x[0]}`} ref={ref} data={data} options={options} /></div>
 }

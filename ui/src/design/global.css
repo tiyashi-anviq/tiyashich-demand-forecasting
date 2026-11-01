@@ -31,6 +31,8 @@
 .log-bars-chart :is(g.x.grid, g.y.grid) { display: none; }
 .log-bars-chart .cds--cc--grid rect.chart-grid-backdrop { fill: transparent; }
 .log-bars-chart .cds--cc--grid rect.chart-grid-backdrop.stroked { stroke: transparent; }
+.log-trend-chart g.y.grid { display: none; }
+
 
 /* The focused page shell: one column, no side rail. */
 .settings-column { max-inline-size: 64rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--cds-spacing-06); }
