@@ -67,12 +67,14 @@ export function DataCard<R>({ id, title, info, description, cols, rows, itemsLab
       return next
     }, { replace: true })
   return (
-    <Tile className={open ? 'card' : 'card dc-folded'} onClick={open ? undefined : (e: any) => { if (!e.target.closest?.('.info-tip')) setOpen(true) }}>
-      <button type="button" className="dc-toggle" aria-expanded={open} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
-        <span>{open ? 'Hide table' : `Show table (${rows.length} ${itemsLabel})`}</span>
-        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
-      <TableContainer title={info ? <>{title}<Info text={info} label={`About ${title}`} /></> : title} description={description}>
+    <Tile className={open ? 'card dc-card' : 'card dc-card dc-folded'} onClick={open ? undefined : (e: any) => { if (!e.target.closest?.('.info-tip')) setOpen(true) }}>
+      <TableContainer title={info ? <>{title}<Info text={info} label={`About ${title}`} /></> : title} description={description}
+        decorator={
+          <button type="button" className="dc-toggle" aria-expanded={open} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
+            <span>{open ? 'Hide table' : `Show table (${rows.length} ${itemsLabel})`}</span>
+            {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        }>
         {open ? <div className="table-scroll thin-scroll">
           <Table size="md" aria-label={title}>
             <TableHead>

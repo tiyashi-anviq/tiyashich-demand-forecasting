@@ -8,6 +8,7 @@ export const api = {
   workspace: () => get<Workspace>('/api/workspace'),
   resetWorkspace: () => send<Workspace>('/api/workspace', 'DELETE'),
   createBatch: () => send<{ id: string }>('/api/batches', 'POST'),
+  addDemoFile: (id: string, fileKey: string) => send<{ added: string[] }>(`/api/batches/${id}/demo-files/${encodeURIComponent(fileKey)}`, 'POST'),
   latestBatch: () => get<{ id: string | null }>('/api/batches/latest'),
   batch: (id: string) => get<Batch>(`/api/batches/${id}`),
   removeFile: (id: string, fid: string) => send<{ ok: boolean }>(`/api/batches/${id}/files/${fid}`, 'DELETE'),

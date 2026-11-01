@@ -16,13 +16,20 @@ export function Findings({ items, title }: { items: Finding[] | undefined; title
   const [open, setOpen] = useState(false)
   if (!items?.length) return null
   const count = (t: string) => items.filter((x) => (KIND[x.tone] ? x.tone : 'note') === t).length
-  const summary = ORDER.filter((t) => count(t)).map((t) => `${count(t)} ${KIND[t].label.toLowerCase()}`).join(' · ')
   const sorted = [...items].sort((a, b) => ORDER.indexOf(KIND[a.tone] ? a.tone : 'note') - ORDER.indexOf(KIND[b.tone] ? b.tone : 'note'))
   return (
     <Tile className="card findings" aria-label={title}>
       <div className="card-heading row-03 findings-head">
         <span className="card-title">{title}</span>
-        {!open && <span className="footnote">{summary}</span>}
+        {!open && (
+          <span className="findings-summary" aria-label={ORDER.filter((t) => count(t)).map((t) => `${count(t)} ${KIND[t].label.toLowerCase()}`).join(', ')}>
+            {ORDER.filter((t) => count(t)).map((t) => (
+              <span key={t} className={`finding-count finding-count-${KIND[t].cls}`}>
+                <strong>{count(t)}</strong> {KIND[t].label}
+              </span>
+            ))}
+          </span>
+        )}
         <Button className="findings-toggle" kind="ghost" size="sm" renderIcon={open ? ChevronUp : ChevronDown} aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Show'}</Button>
       </div>
       {open && <ul className="findings-list">

@@ -1,49 +1,70 @@
-/** System picker: cards for each source system. Click a system → select its files. */
-import { useState } from 'react'
-import { Button, Tile, Tag, InlineNotification } from '@reiq/ui/carbon'
-import { SOURCE_SYSTEMS } from '../../../lib/datasources.config'
-import { PlatformLogo } from './PlatformLogo'
+import { useMemo, useState } from 'react'
+import { Button, Tile } from '@reiq/ui/carbon'
 
-interface ChipProps { children: React.ReactNode }
-function Chip({ children }: ChipProps) {
-  return <span className="chip">{children}</span>
-}
+type ConnectorType = 'Database' | 'File'
+type Connector = { name: string; type: ConnectorType; description: string; mark: string; action: 'sap' | 'oracle' | 'salesforce' | 'excel' }
+
+const CONNECTORS: Connector[] = [
+  { name: 'SAP', type: 'Database', description: 'Link sales and inventory planning data', mark: 'SAP', action: 'sap' },
+  { name: 'Oracle', type: 'Database', description: 'Link enterprise planning and operations data', mark: 'ORA', action: 'oracle' },
+  { name: 'Salesforce', type: 'Database', description: 'Link customer, account and planning data', mark: 'SF', action: 'salesforce' },
+  { name: 'Excel', type: 'File', description: 'Choose a demo workbook for data analysis', mark: 'XLSX', action: 'excel' },
+]
+
+const TYPES = ['All types', 'Database', 'File']
 
 export function SystemPicker({ onClose, onSelectSystem }: { onClose: () => void; onSelectSystem: (key: string) => void }) {
-  const [error, setError] = useState<string | null>(null)
+  const [type, setType] = useState('All types')
+  const [search, setSearch] = useState('')
+  const connectors = useMemo(() => CONNECTORS.filter((connector) =>
+    (type === 'All types' || connector.type === type)
+    && `${connector.name} ${connector.description}`.toLowerCase().includes(search.trim().toLowerCase()),
+  ), [search, type])
 
   return (
-    <div className="stack-03">
-      <div className="row-between">
-        <div className="card-heading">
-          <span className="card-title-sm">Choose a platform</span>
-          <p className="footnote">Pick the source system, then select which of its files to link.</p>
+    <div className="connector-catalog stack-05">
+      <div className="connector-catalog-header">
+        <div>
+          <Button kind="ghost" size="sm" onClick={onClose}>‹</Button>
+          <h2>Link Datasource</h2>
+          <p>Choose a connector to connect more data</p>
         </div>
-        <Button kind="ghost" size="md" onClick={onClose}>Back</Button>
       </div>
-      {error && <InlineNotification kind="error" title="Error" subtitle={error} hideCloseButton onClose={() => setError(null)} />}
 
-      <div className="grid g3">
-        {SOURCE_SYSTEMS.map((system) => (
-          <Tile key={system.key} className="card system-card" role="button" tabIndex={0}
-            onClick={() => onSelectSystem(system.key)}
-            onKeyDown={(e) => e.key === 'Enter' && onSelectSystem(system.key)}>
-            <div className="stack-03">
-              <div className="row-between">
-                <PlatformLogo system={system.key as any} size="md" />
-                <Tag type="blue" size="sm">{system.files.length} file{system.files.length > 1 ? 's' : ''}</Tag>
-              </div>
-              <span className="card-title-sm">{system.name}</span>
-              <p className="footnote">{system.description}</p>
-              <div className="row-03">
-                {system.files.map((f) => (
-                  <Chip key={f}>{f}</Chip>
-                ))}
-              </div>
-            </div>
-          </Tile>
-        ))}
+      <div className="connector-tools">
+        <label className="connector-type">
+          <span className="sr-only">Filter connector type</span>
+          <select value={type} onChange={(event) => setType(event.target.value)}>
+            {TYPES.map((item) => <option key={item} value={item}>{item === 'All types' ? 'Type' : item}</option>)}
+          </select>
+        </label>
+        <label className="connector-search">
+          <span aria-hidden="true">⌕</span>
+          <span className="sr-only">Search connectors</span>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search connectors..." />
+        </label>
       </div>
+
+      {(['Database', 'File'] as const).map((category) => {
+        const items = connectors.filter((connector) => connector.type === category)
+        if (!items.length) return null
+        return (
+          <section className="connector-section" key={category} aria-label={`${category} connectors`}>
+            <h3>{category}</h3>
+            <div className="connector-grid">
+              {items.map((connector) => (
+                <Tile key={connector.name} className="connector-card connector-card-enabled">
+                  <button type="button" onClick={() => onSelectSystem(connector.action)}>
+                    <span className={`connector-mark connector-mark-${connector.type.toLowerCase()}`} aria-hidden="true">{connector.mark}</span>
+                    <strong>{connector.name}</strong>
+                    <span className="connector-description">{connector.description}</span>
+                  </button>
+                </Tile>
+              ))}
+            </div>
+          </section>
+        )
+      })}
     </div>
   )
 }

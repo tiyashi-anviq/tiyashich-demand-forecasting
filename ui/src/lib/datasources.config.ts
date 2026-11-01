@@ -89,7 +89,7 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
     name: 'SAP MM',
     description: 'Stock reports, stock transfer orders, POs and goods receipts',
     protocol: 'odata',
-    files: ['02_Inventory_and_Service', '05_Supply_Procurement_RawMaterial'],
+    files: ['02_Inventory_and_Service'],
     monogram: 'MM',
     color: '#00656E',
     requiredFields: [
@@ -116,7 +116,7 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
     name: 'SAP IBP',
     description: 'Forecast archives and actuals (Demand Planning)',
     protocol: 'odata',
-    files: ['03_Forecast_Versions'],
+    files: [],
     monogram: 'IBP',
     color: '#00656E',
     requiredFields: [
@@ -143,7 +143,7 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
     name: 'SAP MDG',
     description: 'SKU and location masters',
     protocol: 'odata',
-    files: ['04_Masters_Market_Weather_Events'],
+    files: [],
     monogram: 'MDG',
     color: '#00656E',
     requiredFields: [
@@ -170,7 +170,7 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
     name: 'NielsenIQ',
     description: 'Market retail audit, market and weather events',
     protocol: 'feed',
-    files: ['04_Masters_Market_Weather_Events'],
+    files: [],
     monogram: 'NIQ',
     color: '#00A3E0',
     requiredFields: [
@@ -186,7 +186,7 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
     name: 'SAP Ariba',
     description: 'Purchase orders, goods receipts, supplier planning',
     protocol: 'rest',
-    files: ['05_Supply_Procurement_RawMaterial'],
+    files: [],
     monogram: 'AR',
     color: '#00656E',
     requiredFields: [
@@ -204,6 +204,36 @@ export const SOURCE_SYSTEMS: SourceSystem[] = [
       { key: 'incremental_key', label: 'Incremental key', type: 'text', default: 'Week_Start', placeholder: 'Week_Start' },
       { key: 'backfill_start', label: 'Backfill start date', type: 'text', default: '2022-04-01', placeholder: 'YYYY-MM-DD' },
     ],
+  },
+  {
+    key: 'oracle',
+    name: 'Oracle',
+    description: 'Enterprise planning and operations data',
+    protocol: 'rest',
+    files: ['03_Forecast_Versions'],
+    monogram: 'ORA',
+    color: '#C74634',
+    requiredFields: [],
+  },
+  {
+    key: 'salesforce',
+    name: 'Salesforce',
+    description: 'Customer, account and planning data',
+    protocol: 'rest',
+    files: ['04_Masters_Market_Weather_Events'],
+    monogram: 'SF',
+    color: '#00A1E0',
+    requiredFields: [],
+  },
+  {
+    key: 'excel',
+    name: 'Excel',
+    description: 'Demo workbook file import',
+    protocol: 'feed',
+    files: ['05_Supply_Procurement_RawMaterial'],
+    monogram: 'XL',
+    color: '#217346',
+    requiredFields: [],
   },
 ]
 
@@ -249,7 +279,7 @@ export const DATASOURCE_FILES: DatasourceFile[] = [
     key: '03_Forecast_Versions',
     name: 'Forecast Versions',
     description: 'Forecast archives and actuals',
-    systems: ['sap-ibp'],
+    systems: ['oracle'],
     tables: Array.from({ length: 3 }, (_, i) => ({
       name: `Forecast_Table_${i + 1}`,
       origin: 'system',
@@ -260,7 +290,7 @@ export const DATASOURCE_FILES: DatasourceFile[] = [
     key: '04_Masters_Market_Weather_Events',
     name: 'Masters, Market, Weather, Events',
     description: 'SKU/location masters, market retail audit, weather and festival events',
-    systems: ['sap-mdg', 'nielseniq'],
+    systems: ['salesforce'],
     tables: [
       ...Array.from({ length: 15 }, (_, i) => ({
         name: `Master_Table_${i + 1}`,
@@ -274,7 +304,7 @@ export const DATASOURCE_FILES: DatasourceFile[] = [
     key: '05_Supply_Procurement_RawMaterial',
     name: 'Supply, Procurement, Raw Material',
     description: 'POs, goods receipts, plant and supplier planning',
-    systems: ['sap-mm', 'sap-ariba'],
+    systems: ['excel'],
     tables: [
       ...Array.from({ length: 17 }, (_, i) => ({
         name: `Supply_Table_${i + 1}`,

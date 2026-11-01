@@ -9,8 +9,8 @@ import MappingDrawer from './MappingDrawer'
 
 function GroupTable({ groups, onToggle, onReview }: { groups: Group[]; onToggle: (g: Group, on: boolean) => void; onReview: (id: string) => void }) {
   return (
-    <div className="table-scroll thin-scroll">
-      <Table size="md" aria-label="Tables and how they matched">
+    <div className="table-scroll thin-scroll column-mapping-scroll">
+      <Table size="md" aria-label="Tables and how they matched" className="column-mapping-table">
         <TableHead>
           <TableRow>
             <TableHeader>Table</TableHeader>

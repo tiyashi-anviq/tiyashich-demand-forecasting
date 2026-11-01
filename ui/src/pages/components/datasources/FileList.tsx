@@ -1,17 +1,20 @@
 /** File list: shows files a system can supply, with Add/Remove buttons. */
 import { useState } from 'react'
-import { Button, Tile, Tag, InlineNotification } from '@reiq/ui/carbon'
+import { Button, InlineLoading, Tile, Tag } from '@reiq/ui/carbon'
 import { ArrowLeft, Add, Move } from '@carbon/icons-react'
-import { getSystem, getFile } from '../../../lib/datasources.config'
+import { getSystem, getFile, SOURCE_SYSTEMS } from '../../../lib/datasources.config'
 
 interface FileRowProps {
   file: { key: string; name: string; description: string; tables: { name: string; origin: string }[] }
   added: boolean
-  onToggle: (fileKey: string) => void
+  selectedSystemKey?: string
+  systemKey: string
+  onToggle: (fileKey: string, systemKey: string) => void
 }
 
-function FileRow({ file, added, onToggle }: FileRowProps) {
+function FileRow({ file, added, selectedSystemKey, systemKey, onToggle }: FileRowProps) {
   const manualTables = file.tables.filter((t) => t.origin === 'manual')
+  const selectedHere = added && selectedSystemKey === systemKey
   return (
     <Tile className="card file-row">
       <div className="row-between">
@@ -22,8 +25,8 @@ function FileRow({ file, added, onToggle }: FileRowProps) {
           </div>
           <p className="footnote">{file.description} · {file.tables.length} table{file.tables.length === 1 ? '' : 's'}</p>
         </div>
-        <Button kind={added ? 'tertiary' : 'primary'} size="sm" onClick={() => onToggle(file.key)} renderIcon={added ? Move : Add}>
-          {added ? 'Remove' : 'Add'}
+        <Button kind={selectedHere ? 'tertiary' : 'primary'} size="sm" onClick={() => onToggle(file.key, systemKey)} renderIcon={selectedHere ? Move : Add}>
+          {selectedHere ? 'Remove' : added ? 'Use this platform' : 'Add'}
         </Button>
       </div>
       {manualTables.length > 0 && (
@@ -38,17 +41,23 @@ function FileRow({ file, added, onToggle }: FileRowProps) {
 interface FileListProps {
   systemKey: string
   onBack: () => void
-  onConfigure: (addedFiles: string[]) => void
+  onConfigure: (selections: { fileKey: string; systemKey: string }[]) => void
+  isConfiguring: boolean
 }
 
-export default function FileList({ systemKey, onBack, onConfigure }: FileListProps) {
-  const [addedFiles, setAddedFiles] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
+export default function FileList({ systemKey, onBack, onConfigure, isConfiguring }: FileListProps) {
+  const [addedFiles, setAddedFiles] = useState<Record<string, string>>({})
 
   const system = getSystem(systemKey)
-  const files = system ? system.files.map((k) => getFile(k)).filter(Boolean) : []
+  const isSap = systemKey === 'sap'
+  const platformGroups = isSap
+    ? SOURCE_SYSTEMS.filter((source) => ['sap-sd', 'sap-mm'].includes(source.key)).map((source) => ({
+      system: source,
+      files: source.files.map((key) => getFile(key)).filter((file) => file !== undefined),
+    })).filter((group) => group.files.length > 0)
+    : system ? [{ system, files: system.files.map((key) => getFile(key)).filter((file) => file !== undefined) }] : []
 
-  if (!system) {
+  if (!system && !isSap) {
     return (
       <div className="stack-05">
         <h2 className="card-title-sm">System not found</h2>
@@ -62,37 +71,47 @@ export default function FileList({ systemKey, onBack, onConfigure }: FileListPro
     <div className="stack-05">
       <div className="row-between">
         <div className="card-heading">
-          <span className="card-title-sm">{system.name}</span>
-          <p className="footnote">Files {system.name} can supply</p>
+          <span className="card-title-sm">{system?.name ?? 'SAP'}</span>
+          <p className="footnote">{isSap ? 'Choose the SAP files to link' : `Files ${system?.name} can supply`}</p>
         </div>
-        <Button kind="ghost" size="md" onClick={onBack}>
+        <Button kind="ghost" size="md" onClick={onBack} disabled={isConfiguring}>
           <ArrowLeft size={16} aria-hidden="true" style={{ marginRight: '0.25rem' }} />
           Back to platforms
         </Button>
       </div>
-      {error && <InlineNotification kind="error" title="Error" subtitle={error} hideCloseButton onClose={() => setError(null)} />}
-
-      <div className="stack-03">
-        {files.map((file) => {
-          if (!file) return null
-          return (
-            <FileRow key={file.key} file={file} added={addedFiles.has(file.key)} onToggle={(key) => {
-              setAddedFiles((prev) => {
-                const next = new Set(prev)
-                if (next.has(key)) next.delete(key)
-                else next.add(key)
-                return next
-              })
-            }} />
-          )
-        })}
+      <div className="stack-05">
+        {platformGroups.map(({ system: platform, files: platformFiles }) => (
+          <section className="stack-03" key={platform.key} aria-label={`${platform.name} files`}>
+            {isSap && <h3 className="card-title-sm">{platform.name}</h3>}
+            {platformFiles.map((file) => {
+              const selectedSystemKey = addedFiles[file.key]
+              return (
+                <FileRow key={`${platform.key}-${file.key}`} file={file}
+                  added={selectedSystemKey !== undefined} selectedSystemKey={selectedSystemKey}
+                  systemKey={platform.key}
+                  onToggle={(fileKey, providerKey) => {
+                    setAddedFiles((previous) => {
+                      if (previous[fileKey] === providerKey) {
+                        const next = { ...previous }
+                        delete next[fileKey]
+                        return next
+                      }
+                      return { ...previous, [fileKey]: providerKey }
+                    })
+                  }} />
+              )
+            })}
+          </section>
+        ))}
       </div>
 
-      {addedFiles.size > 0 && (
+      {Object.keys(addedFiles).length > 0 && (
         <div className="row-between" style={{ marginTop: '1rem' }}>
-          <span className="footnote">{addedFiles.size} file{addedFiles.size > 1 ? 's' : ''} selected</span>
-          <Button kind="primary" size="md" renderIcon={Add} onClick={() => onConfigure(Array.from(addedFiles))}>
-            Configure connection
+          <span className="footnote">{Object.keys(addedFiles).length} file{Object.keys(addedFiles).length > 1 ? 's' : ''} selected</span>
+          <Button kind="primary" size="md" renderIcon={Add}
+            onClick={() => onConfigure(Object.entries(addedFiles).map(([fileKey, selectedSystemKey]) => ({ fileKey, systemKey: selectedSystemKey })))}
+            disabled={isConfiguring}>
+              {isConfiguring ? <InlineLoading description="Linking…" /> : 'Configure connection'}
           </Button>
         </div>
       )}

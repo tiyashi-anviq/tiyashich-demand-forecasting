@@ -1,5 +1,5 @@
 import { Reset } from '@carbon/icons-react'
-import { Button, Dropdown, MultiSelect, Tag } from '@reiq/ui/carbon'
+import { Button, Dropdown, MultiSelect } from '@reiq/ui/carbon'
 import type { Filters, Options } from '../lib/filters'
 
 export const PERIODS = [
@@ -33,23 +33,8 @@ export function FilterBar({ f, set, reset, dirty, opts, period = false, measure 
   const products = (opts.product ?? []).filter((p) => !f.family.length || !p.family || f.family.includes(p.family))
   const measures = opts.measures ?? []
   
-  // Count active filters
-  const activeCount = [
-    f.family.length > 0 ? 1 : 0,
-    f.region.length > 0 ? 1 : 0,
-    channel && f.channel.length > 0 ? 1 : 0,
-    f.product.length > 0 ? 1 : 0,
-    period && f.period !== 'all' ? 1 : 0,
-    measure && !measureLocked && f.measure !== 'orders' ? 1 : 0,
-  ].reduce((a, b) => a + b, 0)
-  
   return (
     <div className="filter-bar" role="group" aria-label="Filters">
-      {activeCount > 0 && (
-        <Tag type="blue" size="md" title={`${activeCount} filter${activeCount === 1 ? '' : 's'} applied`}>
-          {activeCount} active
-        </Tag>
-      )}
       {multi('region', 'Region', 'All regions')}
       {channel && multi('channel', 'Channel', 'All channels')}
       {multi('family', 'Product family', 'All families')}

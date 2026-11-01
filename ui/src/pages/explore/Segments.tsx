@@ -59,7 +59,6 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
         const yMax = Math.min(3, Math.max(1, ...pts.map((p) => p.cv2)) * 1.05)
         // when every series sells almost every week, the 'weeks between sales' axis is one stripe: spread the dots by variability and volume instead
         const flat = pts.length > 0 && Math.max(...pts.map((p) => p.adi)) < 1.32
-        const vols = pts.map((p) => Math.max(1, p.vol))
         const famCols: Col<any>[] = [
           { header: 'Family', cell: (b) => b.family, sort: (b) => String(b.family).toLowerCase() },
           { header: 'Months', num: true, cell: (b) => b.months },
@@ -85,12 +84,8 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
                   </div>
                   <div className="row-03">
                     <span className="kpi-value">{s.count.toLocaleString('en-IN')}</span>
-                    <span className="kpi-sub">
-                      {s.count === 1 ? 'series' : 'series'}
-                      {s.volume_share > 0.001 ? ` · ${fmtPct(s.volume_share, 1)} of volume` : ''}
-                    </span>
+                    <span className="kpi-sub">series · {fmtPct(s.volume_share, 1)} of volume</span>
                   </div>
-                  <p className="supporting">{s.model}</p>
                   {s.count > 0 && (
                     <div>
                       <Button kind="ghost" size="sm" onClick={() => setOpen(s.id)}>
@@ -102,39 +97,15 @@ export default function Segments({ f, opts, onClear }: { f: Filters; opts: Optio
               ))}
             </div>
             {open && <SeriesView seg={d.summary.find((x: any) => x.id === open)} d={d} onClose={() => setOpen(null)} />}
-            
-            {/* Key Insights Card */}
-            <Tile className="card">
-              <h3 className="card-title">Key Insights</h3>
-              <ul className="insights-list stack-02">
-                {d.summary.map((s: any) => (
-                  <li key={s.id}>
-                    <Tag size="sm" type={SEG_TAG[s.id]}>{s.label}</Tag>
-                    <span className="supporting">
-                      {s.count.toLocaleString('en-IN')} series
-                      {s.volume_share > 0.001 ? ` (${fmtPct(s.volume_share, 0)} of volume)` : ''}
-                      {s.count > 0 ? ` — ${s.model}` : ''}
-                    </span>
-                  </li>
-                ))}
-                {d.short_history > 0 && (
-                  <li>
-                    <Tag size="sm" type="gray">Short history</Tag>
-                    <span className="supporting">{d.short_history.toLocaleString('en-IN')} series with under 1 year of data</span>
-                  </li>
-                )}
-              </ul>
-            </Tile>
 
             <div className="grid">
               {flat ? (
-                <ChartCard title="Series Variability vs Volume" subtitle="Each dot is one series. Colors show forecast difficulty. Switch to table view to see details."
-                  label="Variability analysis"
+                <ChartCard title="Series by Forecastability" subtitle="Number of weekly-selling series in each forecastability group."
+                  label="Series by forecastability"
                   headers={['Series', 'Variability', 'Type', 'Units']} 
                   rows={pts.map((p) => [String(p.key).replace(/\|/g, ' · '), p.cv2.toFixed(2), cap(p.seg), Math.round(p.vol)])}
-                  chart={<BubbleScatter dots={pts.map((p) => ({ group: cap(p.seg), x: p.cv2, y: Math.max(1, p.vol), r: 1 }))} tones={Object.fromEntries(SEGS.map((s) => [cap(s), SEG_TONE[s]]))}
-                    xTitle="Variability (CV²)" yTitle="Units sold (log scale)" xLine={0.49} yLine={null} xMax={yMax} yMax={Math.max(...vols) * 1.5} yMin={Math.max(1, Math.min(...vols) / 1.5)} yLog rRange={[3, 4]} label="Variability analysis" />}
-                  note="Weekly sellers only. Blue (smooth) = reliable forecasts. Gray (erratic) = wider ranges needed. Cut-off at 0.49: left = steady, right = volatile." />
+                  chart={<BarsChart horizontal items={d.summary.map((s: any) => ({ label: s.label, value: s.count, tone: SEG_TONE[s.id as keyof typeof SEG_TONE] }))} yTitle="Series" fmt={(n) => Math.round(n).toLocaleString('en-IN')} label="Series by forecastability" />}
+                  note="Weekly sellers only. Smooth series are easiest to forecast; intermittent and lumpy series may need aggregation or manual review." />
               ) : (
               <ChartCard title="Series Regularity vs Variability" subtitle="Each dot is one series. Dot size = volume sold. Switch to table view for details."
                 label="Series classification"

@@ -47,6 +47,14 @@ app.include_router(inv_router)
 ALLOWED = {".xlsx", ".xlsm", ".xls", ".csv"}
 MAX_BYTES = 600 * 1024 * 1024  # 600 MB
 
+DEMO_WORKBOOKS = {
+    "01_Sales_History": "01_Sales_History.xlsx",
+    "02_Inventory_and_Service": "02_Inventory_and_Service.xlsx",
+    "03_Forecast_Versions": "03_Forecast_Versions.xlsx",
+    "04_Masters_Market_Weather_Events": "04_Masters_Market_Weather_Events.xlsx",
+    "05_Supply_Procurement_RawMaterial": "05_Supply_Procurement_RawMaterial.xlsx",
+}
+
 SOURCES = [
     dict(
         id="sap",
@@ -270,6 +278,46 @@ async def upload(bid: str, files: list[UploadFile] = File(...)):
         scan.start_scan(bid, fid, dest)
         added.append(fid)
     return {"added": added}
+
+
+@app.post("/api/batches/{bid}/demo-files/{file_key}")
+def upload_demo_file(bid: str, file_key: str):
+    b = get_batch(bid)
+    filename = DEMO_WORKBOOKS.get(file_key)
+    if not filename:
+        raise HTTPException(404, "Demo workbook not found.")
+
+    source = Path(__file__).resolve().parents[2] / "er-data" / filename
+    if not source.is_file():
+        raise HTTPException(404, f"Demo workbook '{filename}' is not available.")
+
+    existing = next(
+        (f for f in b["files"].values() if f["name"] == filename),
+        None,
+    )
+    if existing:
+        return {"added": [existing["id"]]}
+
+    size = source.stat().st_size
+    if size > MAX_BYTES:
+        raise HTTPException(413, f"'{filename}' is larger than 600 MB.")
+
+    fid = store.new_id()
+    dest = store.batch_dir(bid) / "uploads" / f"{fid}{source.suffix.lower()}"
+    dest.parent.mkdir(exist_ok=True)
+    shutil.copyfile(source, dest)
+    b["files"][fid] = dict(
+        id=fid,
+        name=filename,
+        size=size,
+        status="queued",
+        progress=0.0,
+        error=None,
+        sheets=[],
+    )
+    store.save(b)
+    scan.start_scan(bid, fid, dest)
+    return {"added": [fid]}
 
 
 @app.delete("/api/batches/{bid}/files/{fid}")
