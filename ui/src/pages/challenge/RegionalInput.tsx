@@ -80,9 +80,10 @@ export function RegionalInput({ month, region, regions, onRegion, units, items, 
     const submission = item.regional?.find((entry: any) => entry.region === region)
     return submission?.status === 'agreed' ? [item.family] : []
   }))
-  const families = allFamilies.filter((itemFamily) => !finalizedFamilies.has(itemFamily))
+  const sentFamilies = new Set(items.filter((item) => item.consolidated !== null).map((item) => item.family))
+  const families = allFamilies.filter((itemFamily) => !finalizedFamilies.has(itemFamily) && !sentFamilies.has(itemFamily))
   useEffect(() => {
-    if (family && finalizedFamilies.has(family)) {
+    if (family && (finalizedFamilies.has(family) || sentFamilies.has(family))) {
       setFamily(null)
       setProduct(null)
       setDraft({})

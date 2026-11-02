@@ -13,7 +13,7 @@ import NewProducts from './pages/NewProducts'
 import ProcurementHub from './pages/ProcurementHub'
 import SupplyPlan from './pages/SupplyPlan'
 
-export const MODULE = 'Demand planning'
+export const MODULE = 'Demand Planning'
 
 function usePinnedHeaderHeight() {
   const { pathname } = useLocation()

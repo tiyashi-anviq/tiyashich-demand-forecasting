@@ -52,7 +52,10 @@ export default function Challenge() {
   const d = q.data
   const month = d?.months[0]?.m ?? ''
   const region = d?.regions.includes(params.get('region')) ? params.get('region') : d?.regions[0]
-  const unit = d?.units.find((u: any) => u.bu === params.get('bu')) ?? d?.units[0]
+  const unit = d?.units.find((u: any) => u.bu === params.get('bu'))
+    ?? d?.units.find((u: any) => d.items.some((item: any) =>
+      item.month === month && item.bus.some((b: any) => b.bu === u.bu && b.status === 'negotiating' && b.turn === 'bu')))
+    ?? d?.units[0]
   const opts: Options = fo.data ?? { family: [], region: [], channel: [], product: [] }
   const onDone = (c: any) => qc.setQueryData(['challenge'], c)
 
