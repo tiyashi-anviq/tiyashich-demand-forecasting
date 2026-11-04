@@ -11,8 +11,8 @@ export function useView<T extends { state?: string }>(base: string, view: string
     placeholderData: keepPreviousData,
     enabled,
     refetchInterval: (q) => (q.state.data?.state && q.state.data.state !== 'ready' ? 2500 : false),
-    // Mark data as stale immediately when query changes to ensure filter updates are reflected
-    staleTime: 0,
+    // Keep data fresh for 30 seconds to avoid unnecessary refetches
+    staleTime: 30000,
   })
 }
 

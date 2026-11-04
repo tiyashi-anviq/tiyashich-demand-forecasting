@@ -29,7 +29,7 @@ function defaultFamily(items: any[], role: Role, region: string | null, unit: { 
 
 /** The one conversation per product, seen from whichever side is looking. The three levels are sequential: the S&D
  *  Head settles each region with its Regional Head first, then the channel heads settle the consolidated number. */
-export function Negotiation({ month, items, role, region, unit, initialFamily, initialRegion, productFilter, stamp, onDone }: {
+export function Negotiation({ month, items, role, region, unit, initialFamily, initialRegion, initialBu, productFilter, stamp, onDone }: {
   month: string
   items: any[]
   role: Role
@@ -37,6 +37,7 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
   unit: { bu: string; name: string } | null
   initialFamily: string | null
   initialRegion: string | null
+  initialBu?: string | null
   productFilter?: string | null
   stamp: number
   onDone: (c: any) => void
@@ -47,7 +48,7 @@ export function Negotiation({ month, items, role, region, unit, initialFamily, i
     : defaultFamily(items, role, region, unit)
   const [family, setFamily] = useState<string | null>(startFamily)
   const [regionPick, setRegionPick] = useState<string | null>(initialRegion ?? (role === 'regional' ? region : null))
-  const [buPick, setBuPick] = useState<string | null>(role === 'bu' ? unit?.bu ?? null : null)
+  const [buPick, setBuPick] = useState<string | null>(initialBu ?? (role === 'bu' ? unit?.bu ?? null : null))
 
   const it = items.find((i) => i.family === family) ?? items[0]
   if (!it) return <p className="supporting">No product families are in this month's challenge.</p>

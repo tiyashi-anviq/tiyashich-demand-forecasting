@@ -23,7 +23,6 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
   const q = useQuery({ queryKey: ['region-lines', month, family, region, stamp], queryFn: () => getJson<any>(`/api/challenge/region/lines?month=${month}&family=${family}&region=${region}`), staleTime: 0 })
   const cycle = useQuery({ queryKey: ['challenge'], queryFn: () => getJson<any>('/api/challenge/cycle'), staleTime: 60_000 })
   const [draft, setDraft] = useState<Record<string, number>>({})
-  const [scaleTo, setScaleTo] = useState<number | undefined>(undefined)
   const [reason, setReason] = useState('')
   const post = useMutation({
     mutationFn: (v: { path: string; body: any; done: string }) => sendJson<any>(`/api/challenge/${v.path}`, 'POST', { month, family, region, ...v.body }),
@@ -35,7 +34,6 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
       onDone(c)
       setDraft({})
       setReason('')
-      setScaleTo(undefined)
     },
     onError: (error: any) => {
       showToast('error', 'Action failed', error?.message || 'Could not complete action. Please try again.')
@@ -77,11 +75,6 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
     { header: 'SKUs changed', num: true, cell: (r) => (r.changed === null || r.changed === undefined ? '–' : r.changed) },
     { header: 'Reason', cell: (r) => r.reason },
   ]
-  const scale = () => {
-    if (!scaleTo || !total) return
-    const k = scaleTo / total
-    setDraft(Object.fromEntries(rows.map((r: any) => [lineKey(r), Math.round(r.qty * k)])))
-  }
   const send = (action: 'counter' | 'final' | 'revise', done: string) => {
     const editableRows = role === 'sd' ? submittedRows : allRows
     run('region/respond', { role: my, action, lines: Object.fromEntries(editableRows.map((r: any) => [lineKey(r), val(r)])), reason }, done)
@@ -108,12 +101,7 @@ export function RegionPanel({ month, family, region, role, locked, productFilter
         </div>
       ) : locked ? null : mine ? (
         <div className="stack-03">
-          <p className="supporting">{turnMine ? (role === 'sd' ? `The ${region} Regional Head proposes ${fmtInt(d.total)} units.` : `The S&D Head proposes ${fmtInt(d.total)} units.`) : 'You can still revise your own number before the S&D Head responds.'} Every channel and SKU needs a number. Change any line, or scale all of them to a total, and give the reason.</p>
-          <div className="row-03">
-            <NumberInput id={`scale-${region}`} size="md" label="Scale every SKU to a total (units)" hideSteppers min={0} step={10000} value={scaleTo ?? d.total}
-              onChange={(_e: unknown, { value }: { value: number | string }) => setScaleTo(num(value))} />
-            <Button kind="ghost" size="md" disabled={lf.missing.length > 0} onClick={scale}>Spread across SKUs</Button>
-          </div>
+          <p className="supporting">{turnMine ? (role === 'sd' ? `The ${region} Regional Head proposes ${fmtInt(d.total)} units.` : `The S&D Head proposes ${fmtInt(d.total)} units.`) : 'You can still revise your own number before the S&D Head responds.'} Every channel and SKU needs a number. Change any line and give the reason.</p>
           <TextInput id={`reason-${region}`} size="md" labelText="Reason" helperText="Needed for a counter-offer, a revision or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
           <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty, so nothing can be submitted yet. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
           <div className="row-03">
@@ -277,12 +265,12 @@ export function BuPanel({ it, b, role, stamp, onDone }: { it: any; b: any; role:
         </div>
       ) : turnMine ? (
         <div className="stack-03">
-          <p className="supporting">{role === 'bu' ? 'The S&D Head proposes' : `${b.head} counters with`} {fmtInt(b.proposal)} units. Accept it, or change any lines and counter. Every line needs a number.</p>
+          <p className="supporting">{role === 'bu' ? 'The S&D Head proposes' : `${b.head} counters with`} {fmtInt(b.proposal)} units. {role === 'sd' ? 'You can accept this counter-offer, update the numbers and send your own counter-offer, or make the final call.' : 'Accept it, or change any lines and counter.'} Every line needs a number.</p>
           <TextInput id={`why-${b.bu}`} size="md" labelText="Reason" helperText="Needed for a counter-offer or a final call." value={reason} onChange={(e) => setReason(e.target.value)} />
           <p className="supporting">{incomplete ? `${incomplete} line${incomplete === 1 ? ' is' : 's are'} empty. ` : ''}Your numbers add up to {fmtInt(total)} units ({changed} line{changed === 1 ? '' : 's'} changed), {fmtSigned(gap(total, modelT), 1)} against the model.</p>
           <div className="row-03">
             <Button kind="primary" size="md" onClick={() => run('respond', { role: my, action: 'accept' }, `✓ Accepted at ${fmtInt(b.proposal)} units`)}>Accept {fmtInt(b.proposal)} units</Button>
-            <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', `Counter-offer sent: ${fmtInt(total)} units`)}>Send counter-offer</Button>
+            <Button kind="secondary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('counter', `Counter-offer sent: ${fmtInt(total)} units`)}>{role === 'sd' ? 'Send counter-offer back' : 'Send counter-offer'}</Button>
             {role === 'sd' && <Button kind="danger--tertiary" size="md" disabled={!reason.trim() || !changed || incomplete > 0} onClick={() => send('final', `✓ Final call made: ${fmtInt(total)} units`)}>Make the final call</Button>}
           </div>
         </div>

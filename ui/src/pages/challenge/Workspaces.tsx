@@ -27,7 +27,7 @@ function stageOf(it: any): { label: string; type: 'gray' | 'blue' | 'teal' | 'gr
 
 /** Step 2: what the S&D Head acts on. One queue of everything waiting for an answer — a Regional Head's submission
  *  or a channel head's counter — and one row per family to open the conversation or send it to the channels. */
-export function SDWorkspace({ cycle, month, options, onDone }: {
+export function SDWorkspace({ cycle, month, options, stamp, onDone }: {
   cycle: any
   month: string
   options: any
@@ -301,8 +301,23 @@ export function SDWorkspace({ cycle, month, options, onDone }: {
         defaultSort={{ col: 0, dir: 'asc' }}
       />
 
-      {/* Show submitted products details when family and region are selected */}
-      {fFam && fReg && <SubmittedProductsTable month={month} family={fFam} region={fReg} buFilter={fBu} productFilter={fProd} onDone={onDone} />}
+      {/* Show negotiation view when a family is selected */}
+      {fFam && (
+        <Negotiation
+          key={`sd|${fFam}|${fReg}|${fBu}`}
+          month={month}
+          items={items}
+          role="sd"
+          region={null}
+          unit={null}
+          initialFamily={fFam}
+          initialRegion={fReg}
+          initialBu={fBu}
+          productFilter={fProd}
+          stamp={stamp}
+          onDone={onDone}
+        />
+      )}
     </div>
   )
 }

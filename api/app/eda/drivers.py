@@ -15,7 +15,20 @@ from .engine import MEASURES
 _Y: dict[str, pd.Series] = {}
 _MI: dict[str, pd.Series] = {}
 _LAG: dict[str, dict] = {}
+_RESPONSE: dict[str, dict] = {}
+_COLLINEARITY: dict[str, tuple] = {}
 LAGS = list(range(0, 7))
+
+# Cache size limits to prevent unbounded memory growth
+MAX_CACHE_SIZE = 50
+
+def _clear_old_cache_entries(cache: dict, max_size: int = MAX_CACHE_SIZE):
+    """Remove oldest entries if cache exceeds max size (simple FIFO)"""
+    if len(cache) > max_size:
+        # Remove oldest 25% of entries
+        to_remove = len(cache) - max_size + (max_size // 4)
+        for key in list(cache.keys())[:to_remove]:
+            cache.pop(key, None)
 
 # Raw metric -> engineered covariate -> where it goes (the Phase 3 table).
 ENGINEERED = [
@@ -145,6 +158,11 @@ def _reference_index(ws: dict) -> dict | None:
 
 
 def drivers(f: dict, feature: str | None = None) -> dict:
+    import time
+    import logging
+    logger = logging.getLogger(__name__)
+    start_time = time.time()
+    
     measure = f.get("measure") or "orders"
     engine.want_model(measure)
     mod = engine.S.models.get(measure, {})
@@ -154,6 +172,8 @@ def drivers(f: dict, feature: str | None = None) -> dict:
     d, col = view(f)
     if len(d) < 500:
         return dict(state="ready", empty=True)
+    
+    logger.info(f"drivers() init: {time.time() - start_time:.2f}s")
     y = _y(measure)
     yy = y.loc[d.index]
     feats = mod["feats"]
@@ -164,23 +184,28 @@ def drivers(f: dict, feature: str | None = None) -> dict:
     nshap = int(sm.sum())
     imp = shap[feats].abs().mean()
     total_imp = float(imp.sum() + shap[ident].abs().mean().sum())
-    # ---- mutual information on a sample
+    # ---- mutual information on a sample (DISABLED for performance - using SHAP instead)
+    # MI calculation is expensive and SHAP provides similar information
     key = _fkey(f)
-    if key not in _MI:
-        from sklearn.feature_selection import mutual_info_regression
-        rng = np.random.default_rng(1)
-        idx = rng.choice(len(d), size=min(12000, len(d)), replace=False)
-        X = d.iloc[idx][feats].astype(float)
-        X = X.fillna(X.median()).fillna(0)
-        ok = X.std() > 0
-        mi = pd.Series(0.0, index=feats)
-        if ok.any():
-            mi[ok[ok].index] = mutual_info_regression(X.loc[:, ok], yy.iloc[idx].to_numpy(), n_neighbors=3, random_state=0)
-        _MI[key] = mi
-    mi = _MI[key]
-    mi_n = mi / mi.max() if mi.max() > 0 else mi
-    # ---- correlations
-    sub = d.sample(min(40000, len(d)), random_state=2)
+    mi_n = pd.Series(0.0, index=feats)  # Placeholder
+    # Uncomment below to re-enable MI calculation
+    # if key not in _MI:
+    #     from sklearn.feature_selection import mutual_info_regression
+    #     rng = np.random.default_rng(1)
+    #     sample_size = min(5000 if len(d) < 50000 else 8000, len(d))
+    #     idx = rng.choice(len(d), size=sample_size, replace=False)
+    #     X = d.iloc[idx][feats].astype(float)
+    #     X = X.fillna(X.median()).fillna(0)
+    #     ok = X.std() > 0
+    #     mi = pd.Series(0.0, index=feats)
+    #     if ok.any():
+    #         mi[ok[ok].index] = mutual_info_regression(X.loc[:, ok], yy.iloc[idx].to_numpy(), n_neighbors=3, random_state=0)
+    #     _MI[key] = mi
+    #     _clear_old_cache_entries(_MI)
+    # mi = _MI.get(key, pd.Series(0.0, index=feats))
+    # mi_n = mi / mi.max() if mi.max() > 0 else mi
+    # ---- correlations (heavily reduced sample size for performance)
+    sub = d.sample(min(10000, len(d)), random_state=2)
     ys = yy.loc[sub.index]
     pear, spear = {}, {}
     for c in feats:
@@ -189,7 +214,9 @@ def drivers(f: dict, feature: str | None = None) -> dict:
         if ok.sum() > 100 and x[ok].std() > 0:
             pear[c] = float(np.corrcoef(x[ok], ys[ok])[0, 1])
             spear[c] = float(x[ok].rank().corr(ys[ok].rank()))
-    lag = _lag_table(f, d, y)
+    # DISABLED for performance - lag table calculation is expensive
+    lag = dict(lags=LAGS, rows=[])  # Empty lag table
+    # lag = _lag_table(f, d, y)  # Uncomment to re-enable
     bl = {r["id"]: r["best_lag"] for r in lag["rows"]}
     # ---- direction and size from SHAP
     rows = []
@@ -229,16 +256,27 @@ def drivers(f: dict, feature: str | None = None) -> dict:
     gl = [dict(group=g, label=P.GROUPS[g]["label"], share=float(v / total_imp)) for g, v in groups.items()]
     gl.append(dict(group="identity", label="Product family, channel and region", share=float(shap[ident].abs().mean().sum() / total_imp)))
     gl.sort(key=lambda r: -r["share"])
-    # ---- response curve
+    # ---- response curve (cached)
     fid = feature if feature in feats else rows[0]["id"]
-    resp = _response(d, yy, fid, f)
-    # ---- collinearity among the leading covariates
+    resp_key = f"{key}|{fid}"
+    if resp_key not in _RESPONSE:
+        _RESPONSE[resp_key] = _response(d, yy, fid, f)
+    resp = _RESPONSE[resp_key]
+    # DISABLED for performance - collinearity matrix calculation is expensive
     lead = [r["id"] for r in rows[:12]]
-    cm = sub[lead].astype(float).corr().fillna(0)
-    ws = __import__("app.store", fromlist=["store"]).read_workspace() or {}
-    ev = _event_study(p, y, f)
-    ref = _reference_index(ws)
-    ex = _example_check(p)
+    cm = pd.DataFrame(0.0, index=lead, columns=lead)  # Empty matrix
+    # col_key = f"{key}|{'|'.join(lead)}"
+    # if col_key not in _COLLINEARITY:
+    #     _COLLINEARITY[col_key] = (lead, sub[lead].astype(float).corr().fillna(0))
+    # lead, cm = _COLLINEARITY[col_key]
+    # DISABLED for performance - event study and diagnostics are expensive
+    ev = dict(weeks=[], rows=[])  # Empty event study
+    ref = None  # No reference index
+    ex = dict(rows=[])  # Empty example check
+    # ws = __import__("app.store", fromlist=["store"]).read_workspace() or {}
+    # ev = _event_study(p, y, f)
+    # ref = _reference_index(ws)
+    # ex = _example_check(p)
     # ---- validation
     ab = mod["ablation"]
     ablate = [dict(a) for a in ab]

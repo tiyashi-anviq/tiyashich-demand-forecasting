@@ -25,9 +25,21 @@ def _ready():
         raise HTTPException(202, "Preparing")
 
 
-def _ver() -> str:
+def _ver(filters: dict = None) -> str:
+    """Version key that includes data timestamp and key filter dimensions.
+    This allows caching results across minor filter changes."""
     ws = store.read_workspace() or {}
-    return G.version("e1", ws.get("loaded_at"))
+    base = ws.get("loaded_at", "")
+    if filters:
+        # Include only stable filter dimensions that define the data subset
+        filter_sig = "|".join([
+            str(filters.get("family", "")),
+            str(filters.get("region", "")),
+            str(filters.get("channel", "")),
+            str(filters.get("measure", "orders"))
+        ])
+        return G.version("e1", base, filter_sig)
+    return G.version("e1", base)
 
 
 def _p(**k) -> dict:
@@ -82,4 +94,5 @@ def distribution(family: str | None = None, region: str | None = None, channel: 
 @router.get("/drivers")
 def drivers(family: str | None = None, region: str | None = None, channel: str | None = None, date_from: str | None = None, date_to: str | None = None, measure: str | None = None, feature: str | None = None):
     _ready()
-    return G.serve('eda', 'drivers', dict(locals()), _ver(), lambda: D.drivers(_f(family, region, channel, date_from, date_to, measure), feature))
+    f = _f(family, region, channel, date_from, date_to, measure)
+    return G.serve('eda', 'drivers', dict(locals()), _ver(f), lambda: D.drivers(f, feature))

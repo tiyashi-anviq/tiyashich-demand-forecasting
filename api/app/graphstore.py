@@ -53,10 +53,15 @@ def serve(area: str, view: str, params: dict, ver: str, compute: Callable[[], ob
             row = con.execute("SELECT payload FROM graph_payloads WHERE area=? AND view=? AND params=? AND version=?", (area, view, key, ver)).fetchone()
             if row:
                 return Response(row[0], media_type="application/json")
-            text = json.dumps(_nan_free(jsonable_encoder(_nan_free(compute()))), allow_nan=False)
-            con.execute("DELETE FROM graph_payloads WHERE area=? AND view=? AND version<>?", (area, view, ver))
-            con.execute("INSERT OR REPLACE INTO graph_payloads (area, view, params, version, payload) VALUES (?,?,?,?,?)", (area, view, key, ver, text))
-            con.commit()
+            result = compute()
+            text = json.dumps(_nan_free(jsonable_encoder(_nan_free(result))), allow_nan=False)
+            # Don't cache building or error states - they should be recomputed
+            result_state = result.get("state") if isinstance(result, dict) else None
+            should_cache = result_state not in ("building", "error")
+            if should_cache:
+                con.execute("DELETE FROM graph_payloads WHERE area=? AND view=? AND version<>?", (area, view, ver))
+                con.execute("INSERT OR REPLACE INTO graph_payloads (area, view, params, version, payload) VALUES (?,?,?,?,?)", (area, view, key, ver, text))
+                con.commit()
             return Response(text, media_type="application/json")
         finally:
             con.close()
